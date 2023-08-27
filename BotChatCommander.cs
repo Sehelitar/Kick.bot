@@ -192,8 +192,11 @@ namespace Kick.Bot
                 {
                     // Cooldown actif
                     var cdArguments = new Dictionary<string, object>() {
+                         { "__source", "CommandTriggered" },
                         { "command", inputCommand },
                         { "commandId", botCommand.CommandInfo.Id },
+                        { "commandSource", "kick" },
+                        { "commandType", "message" },
 
                         { "user", chatMessageEvent.Sender.Username },
                         { "userName", chatMessageEvent.Sender.Slug },
@@ -229,8 +232,12 @@ namespace Kick.Bot
 
                 // Fini ! Si on arrive là, c'est que la commande est valide, on peut la lancer
                 var arguments = new Dictionary<string, object>() {
+                    { "__source", "CommandTriggered" },
                     { "command", inputCommand },
                     { "commandId", botCommand.CommandInfo.Id },
+                    { "commandSource", "kick" },
+                    { "commandType", "message" },
+
                     { "rawInput", chatMessageEvent.Content },
                     { "rawInputEscaped", chatMessageEvent.Content },
                     { "rawInputUrlEncoded", System.Net.WebUtility.UrlEncode(chatMessageEvent.Content) },
@@ -242,7 +249,7 @@ namespace Kick.Bot
                     { "isSubscribed", chatMessageEvent.Sender.IsSubscriber },
                     { "isModerator", chatMessageEvent.Sender.IsModerator },
                     { "isVip", chatMessageEvent.Sender.IsVIP },
-                    { "eventSource", "kick" },
+                    { "eventSource", "command" },
 
                     { "msgId", chatMessageEvent.Id },
                     { "chatroomId", chatMessageEvent.ChatroomId },

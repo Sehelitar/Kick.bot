@@ -13,8 +13,10 @@ using System.CodeDom;
 using static Kick.Bot.BotClient;
 using System.Runtime.Remoting.Channels;
 using System.Threading.Tasks;
-using Microsoft.Toolkit.Uwp.Notifications;
 using System.Reflection;
+using System.IO;
+using System.Drawing.Imaging;
+using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace Kick.Bot
 {
@@ -22,7 +24,7 @@ namespace Kick.Bot
     {
         public static IInlineInvokeProxy CPH;
         
-        public KickClient Client { get; private set; }
+        internal KickClient Client { get; private set; }
 
         public User AuthenticatedUser { get; private set; }
 
@@ -37,6 +39,9 @@ namespace Kick.Bot
             CPH.RegisterCustomTrigger("[Kick] Sub Gifts (multiple)", BotEventListener.BotEventType.SubGifts, new string[] { "Kick", "Subscriptions" });
             CPH.RegisterCustomTrigger("[Kick] Timeout", BotEventListener.BotEventType.Timeout, new string[] { "Kick", "Moderation" });
             CPH.RegisterCustomTrigger("[Kick] User Ban", BotEventListener.BotEventType.UserBanned, new string[] { "Kick", "Moderation" });
+
+            var target = Path.GetTempPath() + "KickLogo.png";
+            Properties.Resources.KickLogo.Save(target, ImageFormat.Png);
 
             CPH.LogDebug("[Kick] Démarrage du bot Kick");
             Client = new KickClient();
@@ -53,9 +58,8 @@ namespace Kick.Bot
             AuthenticatedUser = await Client.Authenticate();
             CPH.LogDebug($"[Kick] Connecté en tant que {AuthenticatedUser.UserName}");
 
-            var target = Assembly.GetExecutingAssembly().Location;
-            target = target.Substring(0, target.LastIndexOf('\\')+1) + "kick.png";
-
+            var target = Path.GetTempPath() + "KickLogo.png";
+            //CPH.ShowToastNotification("Kick", $"Successfuly connected as {AuthenticatedUser.UserName}", "via Kick.bot", target);
             new ToastContentBuilder()
                 .AddText("Kick")
                 .AddText($"Successfuly connected as {AuthenticatedUser.UserName}")
@@ -84,20 +88,20 @@ namespace Kick.Bot
             return new BotEventListener(Client.GetEventListener(), channel);
         }
 
-        public void SendMessage(Dictionary<string, dynamic> args)
+        public void SendMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
                 if (args.TryGetValue("chatroomId", out var chatroomId))
-                {
                     chatroomId = Convert.ToInt64(chatroomId);
-                    Client.SendMessageToChatroom(chatroomId, Convert.ToString(args["message"])).Wait();
-                } else
-                {
+                else if (channel != null)
+                    chatroomId = channel.Chatroom.Id;
+                else
                     throw new Exception("argument chatroomId manquant.");
-                }
+
+                Client.SendMessageToChatroom(chatroomId, Convert.ToString(args["message"])).Wait();
             }
             catch(Exception ex)
             {
@@ -105,7 +109,7 @@ namespace Kick.Bot
             }
         }
 
-        public void SendReply(Dictionary<string, dynamic> args)
+        public void SendReply(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -114,6 +118,8 @@ namespace Kick.Bot
 
                 if (args.TryGetValue("chatroomId", out var chatroomId))
                     chatroomId = Convert.ToInt64(chatroomId);
+                else if (channel != null)
+                    chatroomId = channel.Chatroom.Id;
                 else
                     throw new Exception("argument chatroomId manquant.");
                 string message = String.Empty;
@@ -180,7 +186,7 @@ namespace Kick.Bot
                 CPH.SetArgument("targetDescriptionEscaped", WebUtility.UrlEncode(channelInfos.User.Bio));
                 CPH.SetArgument("targetUserProfileImageUrl", channelInfos.User.ProfilePic);
                 CPH.SetArgument("targetUserProfileImageUrlEscaped", WebUtility.UrlEncode(channelInfos.User.ProfilePic));
-                CPH.SetArgument("targetUserProfileImageEscaped", WebUtility.UrlEncode(channelInfos.User.ProfilePic)); // Bugfix Streamer.bot qui se sont planté ! La doc est contradictoire.
+                CPH.SetArgument("targetUserProfileImageEscaped", WebUtility.UrlEncode(channelInfos.User.ProfilePic));
                 CPH.SetArgument("targetUserType", channelInfos.IsVerified ? "partner" : (channelInfos.IsAffiliate ? "affiliate" : String.Empty));
                 CPH.SetArgument("targetIsAffiliate", channelInfos.IsAffiliate);
                 CPH.SetArgument("targetIsPartner", channelInfos.IsVerified);
