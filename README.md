@@ -5,7 +5,7 @@ You will get :
 
 * Custom events triggers for all basic streaming events : new followers, subs, resubs, gifts and even moderation
 events and messages events.
-* 2 C# methods to send messages and replies to your chat.
+* Some C# methods to send messages and replies to your chat, and fetch users infos.
 * Support for Streamer.bot commands ! Yes, the ones from the "Commands" tab.
 
 Just take a look to the triggers in ``Custom`` => ``Kick`` and see by yourself :)
@@ -71,6 +71,19 @@ And for both C# methods, some arguments are required to be set before calling an
 
 Note : If you reply to a message in an action that was called by a message/command trigger, all these arguments but
 your reply will already be set.
+
+### GetUserInfos
+
+This method works in a similar way than the "Get User Info for Target" sub-action for Twitch
+(see https://wiki.streamer.bot/en/Sub-Actions/Twitch/Get-User-Info-for-Target).
+
+| Argument | Type   | Value  |
+| :----- | :----- | :----- |
+| userName | string | The user you want to get infos from. It is the same userName you will receive from events. |
+
+### GetBroadcasterInfos
+
+This method is similar to GetUserInfos, but to fetch infos from the channel owner. No arguments are required.
 
 ## Bugs
 
