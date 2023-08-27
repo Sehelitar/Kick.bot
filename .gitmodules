@@ -1,0 +1,4 @@
+[submodule "KickAPI"]
+	path = KickAPI
+	url = git@github.com:Sehelitar/Kick.git
+	branch = main
