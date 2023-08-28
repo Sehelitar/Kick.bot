@@ -48,10 +48,17 @@ A Windows notification will appear to confirm your authentication is successful.
 
 Just add Kick triggers to your actions and see for yourself !
 
+![Add a trigger](doc/triggers.png)
+
 All triggers mimic Twitch events (as far as I could), so Twitch documentation for the corresponding triggers applies.
 (see https://wiki.streamer.bot/en/Platforms/Twitch/Events)
 
-And for both C# methods, some arguments are required to be set before calling any of them :
+And for the following C# methods, some arguments are required to be set before calling any of them. Here is how you call them :
+
+![Add C# Method](doc/add_method.png)
+![Methods list](doc/methods_list.png)
+
+## C# Methods
 
 ### SendMessage
 
