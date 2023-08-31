@@ -192,7 +192,6 @@ namespace Kick.Bot
                 {
                     // Cooldown actif
                     var cdArguments = new Dictionary<string, object>() {
-                         { "__source", "CommandTriggered" },
                         { "command", inputCommand },
                         { "commandId", botCommand.CommandInfo.Id },
                         { "commandSource", "kick" },
@@ -232,7 +231,6 @@ namespace Kick.Bot
 
                 // Fini ! Si on arrive là, c'est que la commande est valide, on peut la lancer
                 var arguments = new Dictionary<string, object>() {
-                    { "__source", "CommandTriggered" },
                     { "command", inputCommand },
                     { "commandId", botCommand.CommandInfo.Id },
                     { "commandSource", "kick" },
