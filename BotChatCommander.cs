@@ -4,6 +4,7 @@ using System;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using static Kick.Bot.BotClient;
 
@@ -72,7 +73,7 @@ namespace Kick.Bot
                             if (command.Length < 2)
                                 continue;
 
-                            switch (botCommand.CommandInfo.Mode)
+                            switch (botCommand.CommandInfo.Location)
                             {
                                 // Début de phrase
                                 case 0:
@@ -80,7 +81,7 @@ namespace Kick.Bot
                                     {
                                         textCommandMatch = true;
                                         inputCommand = command;
-                                        inputStrings = chatMessageEvent.Content.Substring(command.Length).Trim().Split(' ');
+                                        inputStrings = chatMessageEvent.Content.Substring(command.Length).Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                                     }
                                     break;
 
@@ -90,7 +91,7 @@ namespace Kick.Bot
                                     {
                                         textCommandMatch = true;
                                         inputCommand = chatMessageEvent.Content.Trim();
-                                        inputStrings = chatMessageEvent.Content.Trim().Split(' ');
+                                        inputStrings = chatMessageEvent.Content.Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                                     }
                                     break;
 
@@ -102,7 +103,7 @@ namespace Kick.Bot
                                     {
                                         textCommandMatch = true;
                                         inputCommand = command.Trim();
-                                        inputStrings = chatMessageEvent.Content.Trim().Split(' ');
+                                        inputStrings = chatMessageEvent.Content.Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                                     }
                                     break;
                             }
@@ -127,6 +128,8 @@ namespace Kick.Bot
                 // La commande ne correspond pas, on passe à la suivante
                 if (!textCommandMatch)
                     continue;
+
+                var rawInput = String.Join(" ", inputStrings);
 
                 /* Vérification de la liste des accès */
 
@@ -236,9 +239,9 @@ namespace Kick.Bot
                     { "commandSource", "kick" },
                     { "commandType", "message" },
 
-                    { "rawInput", chatMessageEvent.Content },
-                    { "rawInputEscaped", chatMessageEvent.Content },
-                    { "rawInputUrlEncoded", System.Net.WebUtility.UrlEncode(chatMessageEvent.Content) },
+                    { "rawInput", rawInput },
+                    { "rawInputEscaped", rawInput },
+                    { "rawInputUrlEncoded", System.Net.WebUtility.UrlEncode(rawInput) },
 
                     { "user", chatMessageEvent.Sender.Username },
                     { "userName", chatMessageEvent.Sender.Slug },
@@ -256,13 +259,12 @@ namespace Kick.Bot
                     { "userCounter", userCurrentCounter },
                     { "fromKick", true }
                 };
-                    
-                var msgParts = chatMessageEvent.Content.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                for(int i = 0; i < msgParts.Length; ++i)
+                
+                for(int i = 0; i < inputStrings.Length; ++i)
                 {
-                    arguments.Add($"input{i}", msgParts[i]);
-                    arguments.Add($"inputEscaped{i}", msgParts[i]);
-                    arguments.Add($"inputUrlEncoded{i}", System.Net.WebUtility.UrlEncode(msgParts[i]));
+                    arguments.Add($"input{i}", inputStrings[i]);
+                    arguments.Add($"inputEscaped{i}", inputStrings[i]);
+                    arguments.Add($"inputUrlEncoded{i}", System.Net.WebUtility.UrlEncode(inputStrings[i]));
                 }
 
                 CPH.TriggerCodeEvent($"kickChatCommand.{botCommand.CommandInfo.Id}", arguments);
