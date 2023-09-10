@@ -58,39 +58,9 @@ And for the following C# methods, some arguments are required to be set before c
 ![Add C# Method](doc/add_method.png)
 ![Methods list](doc/methods_list.png)
 
-## C# Methods
+## Documentation
 
-### SendMessage
-
-| Argument | Type   | Value  |
-| :----- | :----- | :----- |
-| message | string | The message you want to send. |
-
-### SendReply
-
-| Argument | Type   | Value  |
-| :----- | :----- | :----- |
-| reply | string | The message you want to send. |
-| message | string | Content of the message you are replying to. |
-| msgId | string | Id of the message you are replying to. |
-| user | long | Username of the user you are replying to. |
-| userId | string | Id of the user you are replying to. |
-
-Note : If you reply to a message in an action that was called by a message/command trigger, all these arguments but
-your reply will already be set.
-
-### GetUserInfos
-
-This method works in a similar way than the "Get User Info for Target" sub-action for Twitch
-(see https://wiki.streamer.bot/en/Sub-Actions/Twitch/Get-User-Info-for-Target).
-
-| Argument | Type   | Value  |
-| :----- | :----- | :----- |
-| userName | string | The user you want to get infos from. It is the same userName you will receive from events. |
-
-### GetBroadcasterInfos
-
-This method is similar to GetUserInfos, but to fetch infos from the channel owner. No arguments are required.
+Full documentation available here : https://github.com/Sehelitar/Kick.bot/wiki
 
 ## Bugs
 
