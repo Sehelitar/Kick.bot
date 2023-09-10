@@ -270,7 +270,7 @@ namespace Kick.Bot
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
-                if (!args.TryGetValue("username", out var username))
+                if (!args.TryGetValue("user", out var username))
                     throw new Exception("nom d'utilisateur manquant.");
 
                 Client.AddChannelVip(channel, username).Wait();
@@ -288,7 +288,7 @@ namespace Kick.Bot
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
-                if (!args.TryGetValue("username", out var username))
+                if (!args.TryGetValue("user", out var username))
                     throw new Exception("nom d'utilisateur manquant.");
 
                 Client.RemoveChannelVip(channel, username).Wait();
@@ -306,7 +306,7 @@ namespace Kick.Bot
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
-                if (!args.TryGetValue("username", out var username))
+                if (!args.TryGetValue("user", out var username))
                     throw new Exception("nom d'utilisateur manquant.");
 
                 Client.AddChannelOG(channel, username).Wait();
@@ -324,7 +324,7 @@ namespace Kick.Bot
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
-                if (!args.TryGetValue("username", out var username))
+                if (!args.TryGetValue("user", out var username))
                     throw new Exception("nom d'utilisateur manquant.");
 
                 Client.RemoveChannelOG(channel, username).Wait();
@@ -342,7 +342,7 @@ namespace Kick.Bot
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
-                if (!args.TryGetValue("username", out var username))
+                if (!args.TryGetValue("user", out var username))
                     throw new Exception("nom d'utilisateur manquant.");
 
                 Client.AddChannelModerator(channel, username).Wait();
@@ -360,7 +360,7 @@ namespace Kick.Bot
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
-                if (!args.TryGetValue("username", out var username))
+                if (!args.TryGetValue("user", out var username))
                     throw new Exception("nom d'utilisateur manquant.");
 
                 Client.RemoveChannelModerator(channel, username).Wait();
