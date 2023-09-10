@@ -17,11 +17,12 @@ namespace Kick.Bot
         internal static IInlineInvokeProxy CPH { get { return BotClient.CPH; } }
 
         private readonly KickEventListener EventListener = null;
-        public readonly Channel Channel;
+        public Channel Channel;
 
         private readonly List<long> Followers = new List<long>();
 
-        internal BotEventListener(KickEventListener listener, Channel channel) {
+        internal BotEventListener(KickEventListener listener, Channel channel)
+        {
             EventListener = listener;
             Channel = channel;
 
@@ -31,11 +32,22 @@ namespace Kick.Bot
             EventListener.OnSubscription += Kick_OnSubscription;
             EventListener.OnSubGift += Kick_OnSubGift;
             EventListener.OnUserBanned += Kick_OnUserBanned;
+            EventListener.OnChatUpdated += Kick_OnChatUpdated;
+            EventListener.OnPollCreated += Kick_OnPollCreated;
+            EventListener.OnPollUpdated += Kick_OnPollUpdated;
+            EventListener.OnPollCompleted += Kick_OnPollCompleted;
+            EventListener.OnPollCancelled += Kick_OnPollCancelled;
+            EventListener.OnStreamStarted += Kick_OnStreamStarted;
+            EventListener.OnStreamEnded += Kick_OnStreamEnded;
+            EventListener.OnStreamUpdated += Kick_OnStreamUpdated;
+            EventListener.OnRaid += Kick_OnRaid;
 
             EventListener.JoinAsync(Channel).Wait();
 
             StreamerBotAppSettings.Load();
         }
+
+        
 
         ~BotEventListener() {
             EventListener.LeaveAsync(Channel);
@@ -364,11 +376,346 @@ namespace Kick.Bot
                         }
                     });
                 }
-                CPH.RunAction("KickBot", false);
             }
             catch (Exception ex)
             {
                 CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement d'abonnement : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnChatUpdated(ChatUpdatedEvent chatUpdateEvent)
+        {
+            try
+            {
+                if (chatUpdateEvent.Id != Channel.Id)
+                    return;
+
+                CPH.LogDebug($"[Kick] Changement de mode de chat.");
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.ChatUpdated,
+                    Arguments = new Dictionary<string, object>() {
+                        { "emotesOnly", chatUpdateEvent.EmotesMode.Enabled },
+                        { "subsOnly", chatUpdateEvent.SubscribersMode.Enabled },
+                        { "followersOnly", chatUpdateEvent.FollowersMode.Enabled },
+                        { "followersOnlyMinDuration", chatUpdateEvent.FollowersMode.MinDuration },
+                        { "slowMode", chatUpdateEvent.SlowMode.Enabled },
+                        { "slowModeInterval", chatUpdateEvent.SlowMode.MessageInterval },
+                        { "botProtection", chatUpdateEvent.AdvancedBotProtection.Enabled },
+                        { "botProtectionRemaining", chatUpdateEvent.AdvancedBotProtection.RemainingTime },
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de changement de mode de chat : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnPollCancelled(PollUpdateEvent pollUpdateEvent)
+        {
+            try
+            {
+                if (pollUpdateEvent.Channel.Id != Channel.Id)
+                    return;
+
+                CPH.LogDebug($"[Kick] Annulation du sondage.");
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.PollCancelled,
+                    Arguments = new Dictionary<string, object>() {
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement d'annulation de sondage : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnPollCreated(PollUpdateEvent pollUpdateEvent)
+        {
+            try
+            {
+                if (pollUpdateEvent.Channel.Id != Channel.Id)
+                    return;
+
+                CPH.LogDebug($"[Kick] Lancement d'un sondage.");
+
+                var args = new Dictionary<string, object>() {
+                    { "poll.StartedAt", pollUpdateEvent.Date.ToString() },
+                    { "poll.Title", pollUpdateEvent.Poll.Title },
+                    { "poll.Duration", pollUpdateEvent.Poll.Duration },
+                    { "poll.DurationRemaining", pollUpdateEvent.Poll.Remaining },
+                    { "poll.choices.count", pollUpdateEvent.Poll.Options.Length },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+
+                var i = 0;
+                var totalVotes = 0;
+                foreach(var option in pollUpdateEvent.Poll.Options)
+                {
+                    args[$"poll.choice{i}.title"] = option.Label;
+                    args[$"poll.choice{i}.votes"] = option.Votes;
+                    args[$"poll.choice{i}.totalVotes"] = option.Votes;
+                    totalVotes += option.Votes;
+                    ++i;
+                }
+
+                args["poll.votes"] = totalVotes;
+                args["poll.totalVotes"] = totalVotes;
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.PollCreated,
+                    Arguments = args
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de changement de mode de chat : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnPollUpdated(PollUpdateEvent pollUpdateEvent)
+        {
+            try
+            {
+                if (pollUpdateEvent.Channel.Id != Channel.Id)
+                    return;
+
+                var args = new Dictionary<string, object>() {
+                    { "poll.StartedAt", pollUpdateEvent.Date.ToString() },
+                    { "poll.Title", pollUpdateEvent.Poll.Title },
+                    { "poll.Duration", pollUpdateEvent.Poll.Duration },
+                    { "poll.DurationRemaining", pollUpdateEvent.Poll.Remaining },
+                    { "poll.choices.count", pollUpdateEvent.Poll.Options.Length },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+
+                var i = 0;
+                var totalVotes = 0;
+                foreach (var option in pollUpdateEvent.Poll.Options)
+                {
+                    args[$"poll.choice{i}.title"] = option.Label;
+                    args[$"poll.choice{i}.votes"] = option.Votes;
+                    args[$"poll.choice{i}.totalVotes"] = option.Votes;
+                    totalVotes += option.Votes;
+                    ++i;
+                }
+
+                args["poll.votes"] = totalVotes;
+                args["poll.totalVotes"] = totalVotes;
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.PollUpdated,
+                    Arguments = args
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de changement de mode de chat : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnPollCompleted(PollUpdateEvent pollUpdateEvent)
+        {
+            try
+            {
+                if (pollUpdateEvent.Channel.Id != Channel.Id)
+                    return;
+
+                var args = new Dictionary<string, object>() {
+                    { "poll.StartedAt", pollUpdateEvent.Date.ToString() },
+                    { "poll.Title", pollUpdateEvent.Poll.Title },
+                    { "poll.Duration", pollUpdateEvent.Poll.Duration },
+                    { "poll.DurationRemaining", pollUpdateEvent.Poll.Remaining },
+                    { "poll.choices.count", pollUpdateEvent.Poll.Options.Length },
+
+                    { "poll.EndedAt", DateTime.Now },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+
+                var i = 0;
+                var totalVotes = 0;
+                PollOption bestOption = null;
+                int bestIndex = 0;
+                foreach (var option in pollUpdateEvent.Poll.Options)
+                {
+                    args[$"poll.choice{i}.title"] = option.Label;
+                    args[$"poll.choice{i}.votes"] = option.Votes;
+                    args[$"poll.choice{i}.totalVotes"] = option.Votes;
+
+                    if (bestOption == null || bestOption.Votes < option.Votes)
+                    {
+                        bestOption = option;
+                        bestIndex = i;
+                    }
+
+                    totalVotes += option.Votes;
+                    ++i;
+                }
+
+                args["poll.votes"] = totalVotes;
+                args["poll.totalVotes"] = totalVotes;
+
+                args[$"poll.winningIndex"] = bestIndex;
+                args[$"poll.winningChoice.id"] = bestIndex;
+                args[$"poll.winningChoice.title"] = bestOption.Label;
+                args[$"poll.winningChoice.votes"] = bestOption.Votes;
+                args[$"poll.winningChoice.totalVotes"] = bestOption.Votes;
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.PollCompleted,
+                    Arguments = args
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de changement de mode de chat : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnStreamEnded(LivestreamStoppedEvent kickEvent)
+        {
+            try
+            {
+                if (kickEvent.Livestream.Channel.Id != Channel.Id)
+                    return;
+
+                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.StreamEnded,
+                    Arguments = new Dictionary<string, object>() {
+                        { "endedAt", DateTime.Now },
+
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement d'arrêt de stream : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnStreamStarted(LivestreamStartedEvent livestreamEvent)
+        {
+            try
+            {
+                if (livestreamEvent.Livestream.ChannelId != Channel.Id)
+                    return;
+
+                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+
+                var args = new Dictionary<string, object>() {
+                    { "startedAt", DateTime.Now },
+
+                    { "game", Channel.LiveStream.Categories[0]?.Name },
+                    { "gameId", Channel.LiveStream.Categories[0]?.Id },
+                    { "tagCount", Channel.LiveStream.Tags.Count },
+                    { "tags", Channel.LiveStream.Tags },
+                    { "tagsDelimited", String.Join(",", Channel.LiveStream.Tags.ToArray()) },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+
+                var i = 0;
+                foreach(var tag in Channel.LiveStream.Tags)
+                {
+                    args[$"tag{i}"] = tag;
+                    ++i;
+                }
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.StreamStarted,
+                    Arguments = args
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de démarrage de stream : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnStreamUpdated(LivestreamUpdatedEvent livestreamEvent)
+        {
+            try
+            {
+                if (livestreamEvent.Channel.Id != Channel.Id)
+                    return;
+
+                var args = new Dictionary<string, object>() {
+                    { "gameUpdate", livestreamEvent.Channel.LiveStream.Categories[0]?.Id != Channel.LiveStream.Categories[0]?.Id },
+                    { "statusUpdate", livestreamEvent.SessionTitle != Channel.LiveStream?.SessionTitle },
+
+                    { "status", livestreamEvent.SessionTitle },
+                    { "oldStatus", Channel.LiveStream?.SessionTitle },
+
+                    { "gameId", livestreamEvent.Channel.LiveStream.Categories[0]?.Id },
+                    { "gameName", livestreamEvent.Channel.LiveStream.Categories[0]?.Name },
+                    { "oldGameId", Channel.LiveStream.Categories[0]?.Id },
+                    { "oldGameName", Channel.LiveStream.Categories[0]?.Name },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+
+                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.TitleChanged,
+                    Arguments = args
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de mise à jour du stream : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnRaid(RaidEvent raidEvent)
+        {
+            try
+            {
+                if (raidEvent.Channel.Id != Channel.Id)
+                    return;
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.Raid,
+                    Arguments = new Dictionary<string, object>() {
+                        { "user", raidEvent.User.Username },
+                        { "viewers", raidEvent.Host.ViewersCount },
+
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de démarrage de stream : {ex.Message}");
             }
         }
 
@@ -384,6 +731,15 @@ namespace Kick.Bot
             public const string SubGifts = "kickGifts";
             public const string Timeout = "kickTO";
             public const string UserBanned = "kickBan";
+            public const string PollCreated = "kickPollCreated";
+            public const string PollUpdated = "kickPollUpdated";
+            public const string PollCompleted = "kickPollCompleted";
+            public const string PollCancelled = "kickPollCancelled";
+            public const string ChatUpdated = "kickChatUpdated";
+            public const string StreamStarted = "kickStreamStarted";
+            public const string StreamEnded = "kickStreamEnded";
+            public const string Raid = "kickIncomingRaid";
+            public const string TitleChanged = "kickTitleChanged";
         }
 
         internal class BotEvent

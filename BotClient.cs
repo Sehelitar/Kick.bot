@@ -30,15 +30,30 @@ namespace Kick.Bot
 
         public BotClient() {
             CPH.RegisterCustomTrigger("[Kick] Chat Message", BotEventListener.BotEventType.Message, new string[] { "Kick", "Chat" });
-            CPH.RegisterCustomTrigger("[Kick] Chat Message Deleted", BotEventListener.BotEventType.MessageDeleted, new string[] { "Kick", "Moderation" });
+
             CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new string[] { "Kick", "Commands" });
             CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommand, new string[] { "Kick", "Commands" });
+
             CPH.RegisterCustomTrigger("[Kick] Follow", BotEventListener.BotEventType.Follow, new string[] { "Kick", "Channel" });
+
             CPH.RegisterCustomTrigger("[Kick] Subscription", BotEventListener.BotEventType.Subscription, new string[] { "Kick", "Subscriptions" });
             CPH.RegisterCustomTrigger("[Kick] Sub Gift (x1)", BotEventListener.BotEventType.SubGift, new string[] { "Kick", "Subscriptions" });
             CPH.RegisterCustomTrigger("[Kick] Sub Gifts (multiple)", BotEventListener.BotEventType.SubGifts, new string[] { "Kick", "Subscriptions" });
+
+            CPH.RegisterCustomTrigger("[Kick] Chat Message Deleted", BotEventListener.BotEventType.MessageDeleted, new string[] { "Kick", "Moderation" });
             CPH.RegisterCustomTrigger("[Kick] Timeout", BotEventListener.BotEventType.Timeout, new string[] { "Kick", "Moderation" });
             CPH.RegisterCustomTrigger("[Kick] User Ban", BotEventListener.BotEventType.UserBanned, new string[] { "Kick", "Moderation" });
+
+            CPH.RegisterCustomTrigger("[Kick] Poll Created", BotEventListener.BotEventType.PollCreated, new string[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick] Poll Updated", BotEventListener.BotEventType.PollUpdated, new string[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick] Poll Completed", BotEventListener.BotEventType.PollCompleted, new string[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick] Poll Cancelled", BotEventListener.BotEventType.PollCancelled, new string[] { "Kick", "Polls" });
+
+            CPH.RegisterCustomTrigger("[Kick] Stream Started", BotEventListener.BotEventType.StreamStarted, new string[] { "Kick", "Stream" });
+            CPH.RegisterCustomTrigger("[Kick] Stream Ended", BotEventListener.BotEventType.StreamEnded, new string[] { "Kick", "Stream" });
+            CPH.RegisterCustomTrigger("[Kick] Title/Category Changed", BotEventListener.BotEventType.TitleChanged, new string[] { "Kick", "Stream" });
+
+            CPH.RegisterCustomTrigger("[Kick] Raid", BotEventListener.BotEventType.Raid, new string[] { "Kick" });
 
             var target = Path.GetTempPath() + "KickLogo.png";
             Properties.Resources.KickLogo.Save(target, ImageFormat.Png);
@@ -169,7 +184,7 @@ namespace Kick.Bot
             }
         }
 
-        protected void GetKickChannelInfos(Dictionary<string, dynamic> args, Channel channel, string username)
+        private void GetKickChannelInfos(Dictionary<string, dynamic> args, Channel channel, string username)
         {
             try
             {
@@ -245,6 +260,255 @@ namespace Kick.Bot
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'envoi de la réponse : {ex}");
+            }
+        }
+
+        public void AddChannelVip(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("username", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                Client.AddChannelVip(channel, username).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'ajout du VIP : {ex}");
+            }
+        }
+
+        public void RemoveChannelVip(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("username", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                Client.RemoveChannelVip(channel, username).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du retrait du VIP : {ex}");
+            }
+        }
+
+        public void AddChannelOG(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("username", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                Client.AddChannelOG(channel, username).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'ajout du OG : {ex}");
+            }
+        }
+
+        public void RemoveChannelOG(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("username", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                Client.RemoveChannelOG(channel, username).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du retrait du OG : {ex}");
+            }
+        }
+
+        public void AddChannelModerator(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("username", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                Client.AddChannelModerator(channel, username).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'ajout du modérateur : {ex}");
+            }
+        }
+
+        public void RemoveChannelModerator(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("username", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                Client.RemoveChannelModerator(channel, username).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du retrait du modérateur : {ex}");
+            }
+        }
+
+        public void BanUser(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("user", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                if (!args.TryGetValue("banReason", out var banReason))
+                    banReason = "";
+
+                Client.BanUser(channel, (string)username, (string)banReason).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du banissement : {ex}");
+            }
+        }
+
+        public void TimeoutUser(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("user", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                if (!args.TryGetValue("banDuration", out var banDuration))
+                    throw new Exception("durée manquante.");
+
+                if (!args.TryGetValue("banReason", out var banReason))
+                    banReason = "";
+
+                Client.TimeoutUser(channel, (string)username, Convert.ToInt64(banDuration), (string)banReason).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du timeout : {ex}");
+            }
+        }
+
+        public void UnbanUser(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("user", out var username))
+                    throw new Exception("nom d'utilisateur manquant.");
+
+                Client.UnbanUser(channel, (string)username).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du timeout : {ex}");
+            }
+        }
+
+        public void StartPoll(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("pollTitle", out var title))
+                    throw new Exception("titre manquant.");
+
+                if (!args.TryGetValue("pollDuration", out var duration))
+                    throw new Exception("durée manquante.");
+                 
+                if (!args.TryGetValue("pollDisplayTime", out var displayTime))
+                    displayTime = 30;
+
+                if (!args.TryGetValue("pollChoices", out var choices))
+                    throw new Exception("options manquantes.");
+
+                Client.StartPoll(channel, (string)title, ((string)choices).Split('|'), Convert.ToInt32(duration), Convert.ToInt32(displayTime)).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du démarrage du sondage : {ex}");
+            }
+        }
+
+        public void ChangeTitle(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("title", out var title))
+                    throw new Exception("titre manquant.");
+
+                Client.SetChannelTitle(channel, (string)title).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement du titre : {ex}");
+            }
+        }
+
+        public void ChangeCategory(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("category", out var category))
+                    throw new Exception("catégorie manquante.");
+
+                Client.SetChannelCategory(channel, (string)category).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de catégorie : {ex}");
+            }
+        }
+
+        public void ClearChat(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                Client.ClearChat(channel).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement du titre : {ex}");
             }
         }
     }
