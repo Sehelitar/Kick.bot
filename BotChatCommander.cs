@@ -149,7 +149,10 @@ namespace Kick.Bot
 
                 // Si l'utilisateur n'est pas autorisé à utiliser cette commande, on passe à la suivante
                 if (!userPermitted)
+                {
+                    CPH.LogDebug($"[Kick] Commande rejetée, droits insuffisants. Caster={chatMessageEvent.Sender.IsBroadcaster} Mod={chatMessageEvent.Sender.IsModerator} VIP={chatMessageEvent.Sender.IsVIP} OG={chatMessageEvent.Sender.IsOG} Sub={chatMessageEvent.Sender.IsSubscriber}");
                     continue;
+                }
 
                 CPH.LogVerbose($"[Kick] Commande détectée ! {botCommand.CommandInfo.Command}");
 

@@ -449,7 +449,7 @@ namespace Kick.Bot
                 CPH.LogDebug($"[Kick] Lancement d'un sondage.");
 
                 var args = new Dictionary<string, object>() {
-                    { "poll.StartedAt", pollUpdateEvent.Date.ToString() },
+                    { "poll.StartedAt", pollUpdateEvent.Date },
                     { "poll.Title", pollUpdateEvent.Poll.Title },
                     { "poll.Duration", pollUpdateEvent.Poll.Duration },
                     { "poll.DurationRemaining", pollUpdateEvent.Poll.Remaining },
@@ -493,7 +493,7 @@ namespace Kick.Bot
                     return;
 
                 var args = new Dictionary<string, object>() {
-                    { "poll.StartedAt", pollUpdateEvent.Date.ToString() },
+                    { "poll.StartedAt", pollUpdateEvent.Date },
                     { "poll.Title", pollUpdateEvent.Poll.Title },
                     { "poll.Duration", pollUpdateEvent.Poll.Duration },
                     { "poll.DurationRemaining", pollUpdateEvent.Poll.Remaining },
@@ -537,7 +537,7 @@ namespace Kick.Bot
                     return;
 
                 var args = new Dictionary<string, object>() {
-                    { "poll.StartedAt", pollUpdateEvent.Date.ToString() },
+                    { "poll.StartedAt", pollUpdateEvent.Date },
                     { "poll.Title", pollUpdateEvent.Poll.Title },
                     { "poll.Duration", pollUpdateEvent.Poll.Duration },
                     { "poll.DurationRemaining", pollUpdateEvent.Poll.Remaining },
