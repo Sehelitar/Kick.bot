@@ -6,7 +6,7 @@ This integration for [Streamer.bot](https://streamer.bot/?utm_source=github&utm_
 You will get :
 
 * Custom events triggers for all basic streaming events : new followers, subs, resubs, gifts, raids and more! 🎆
-* A collection of C# methods to send messages, fetch users' informations, create poll, etc...
+* A collection of C# methods to send messages, fetch users' informations, create poll, make clips, manage your chat and stream, etc...
 * Support for [Streamer.bot](https://streamer.bot/?utm_source=github&utm_medium=banner&utm_campaign=sehelitar_kickbot) commands ! Yes, the ones from the "Commands" tab. 🤯
 
 Compatible only with Streamer.bot **> 0.2.0**
