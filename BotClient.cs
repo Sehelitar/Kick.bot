@@ -521,14 +521,32 @@ namespace Kick.Bot
 
                 args.TryGetValue("title", out var title);
 
-                if (!args.TryGetValue("duration", out var duration))
+                if (args.TryGetValue("duration", out var duration))
+                {
+                    duration = Convert.ToInt32(duration);
+                } else
+                {
                     duration = 30;
+                }
+                    
+
+                if (args.TryGetValue("skip", out var skip))
+                {
+                    skip = Convert.ToInt32(skip);
+                } else
+                {
+                    skip = 0;
+                }
+                
+                var maxDuration = 90 - Convert.ToInt32(skip);
+                duration = Math.Min(duration, maxDuration);
+                var startTime = maxDuration - duration;
 
                 // Update channel infos to have fresh livestream data
                 channel = Client.GetChannelInfos(channel.Slug).Result;
                 try
                 {
-                    var clip = Client.MakeClip(channel, Convert.ToInt32(duration), (string)title).Result;
+                    var clip = Client.MakeClip(channel, Convert.ToInt32(duration), (string)title, startTime).Result;
                     CPH.SetArgument("createClipSuccess", true);
                     CPH.SetArgument("createClipId", clip.Id);
                     CPH.SetArgument("createClipCreatedAt", DateTime.Now);
