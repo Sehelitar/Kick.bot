@@ -511,5 +511,38 @@ namespace Kick.Bot
                 CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement du titre : {ex}");
             }
         }
+
+        public void MakeClip(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                args.TryGetValue("title", out var title);
+
+                if (!args.TryGetValue("duration", out var duration))
+                    duration = 30;
+
+                // Update channel infos to have fresh livestream data
+                channel = Client.GetChannelInfos(channel.Slug).Result;
+                try
+                {
+                    var clip = Client.MakeClip(channel, Convert.ToInt32(duration), (string)title).Result;
+                    CPH.SetArgument("createClipSuccess", true);
+                    CPH.SetArgument("createClipId", clip.Id);
+                    CPH.SetArgument("createClipCreatedAt", DateTime.Now);
+                    CPH.SetArgument("createClipUrl", $"https://kick.com/{channel.Slug}?clip={clip.Id}");
+                }
+                catch
+                {
+                    CPH.SetArgument("createClipSuccess", false);
+                }
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement du titre : {ex}");
+            }
+        }
     }
 }
