@@ -17,6 +17,7 @@ using System.Reflection;
 using System.IO;
 using System.Drawing.Imaging;
 using Microsoft.Toolkit.Uwp.Notifications;
+using System.Linq;
 
 namespace Kick.Bot
 {
@@ -71,13 +72,13 @@ namespace Kick.Bot
         {
             CPH.LogDebug("[Kick] Authentification...");
             AuthenticatedUser = await Client.Authenticate();
-            CPH.LogDebug($"[Kick] Connecté en tant que {AuthenticatedUser.UserName}");
+            CPH.LogDebug($"[Kick] Connecté en tant que {AuthenticatedUser.Username}");
 
             var target = Path.GetTempPath() + "KickLogo.png";
             //CPH.ShowToastNotification("Kick", $"Successfuly connected as {AuthenticatedUser.UserName}", "via Kick.bot", target);
             new ToastContentBuilder()
                 .AddText("Kick")
-                .AddText($"Successfuly connected as {AuthenticatedUser.UserName}")
+                .AddText($"Successfuly connected as {AuthenticatedUser.Username}")
                 .AddAppLogoOverride(new Uri(target), ToastGenericAppLogoCrop.None)
                 .SetToastDuration(ToastDuration.Short)
                 .Show();
@@ -161,10 +162,12 @@ namespace Kick.Bot
         {
             try
             {
-                if(!args.TryGetValue("userName", out var target))
-                    target = channel.Slug;
-
-                GetKickChannelInfos(args, channel, Convert.ToString(target));
+                if(args.TryGetValue("userName", out var userName))
+                    GetKickChannelInfos(args, channel, Convert.ToString(userName) , true);
+                else if (args.TryGetValue("user", out var user))
+                    GetKickChannelInfos(args, channel, Convert.ToString(user));
+                else
+                    GetKickChannelInfos(args, channel, channel.Slug, true);
             }
             catch (Exception ex)
             {
@@ -176,7 +179,7 @@ namespace Kick.Bot
         {
             try
             {
-                GetKickChannelInfos(args, channel, channel.Slug);
+                GetKickChannelInfos(args, channel, channel.Slug, true);
             }
             catch (Exception ex)
             {
@@ -184,17 +187,29 @@ namespace Kick.Bot
             }
         }
 
-        private void GetKickChannelInfos(Dictionary<string, dynamic> args, Channel channel, string username)
+        private void GetKickChannelInfos(Dictionary<string, dynamic> args, Channel channel, string username, bool isSlug = false)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
-                var channelInfos = Client.GetChannelInfos(username).Result;
-                var userInfos = Client.GetChannelUserInfos(channel.Slug, username).Result;
 
-                CPH.SetArgument("targetUser", channelInfos.User.UserName);
+                Channel channelInfos = null;
+                ChannelUser userInfos = null;
+
+                if(isSlug)
+                {
+                    channelInfos = Client.GetChannelInfos(username).Result;
+                    userInfos = Client.GetChannelUserInfos(channel.Slug, channelInfos.User.Username).Result;
+                }
+                else
+                {
+                    userInfos = Client.GetChannelUserInfos(channel.Slug, username).Result;
+                    channelInfos = Client.GetChannelInfos(userInfos.Slug).Result;
+                }
+
+                CPH.SetArgument("targetUser", channelInfos.User.Username);
                 CPH.SetArgument("targetUserName", channelInfos.Slug);
                 CPH.SetArgument("targetUserId", channelInfos.User.Id);
                 CPH.SetArgument("targetDescription", channelInfos.User.Bio);
@@ -208,25 +223,21 @@ namespace Kick.Bot
                 CPH.SetArgument("targetLastActive", DateTime.Now);
                 CPH.SetArgument("targetPreviousActive", DateTime.Now);
                 CPH.SetArgument("targetIsSubscribed", userInfos.IsSubscriber);
-                CPH.SetArgument("targetSubscriptionTier", (userInfos.SubscribedFor > 0 ? 1000 : 0));
+                CPH.SetArgument("targetSubscriptionTier", (userInfos.IsSubscriber && userInfos.SubscribedFor > 0 ? 1000 : 0));
                 CPH.SetArgument("targetIsModerator", userInfos.IsModerator);
                 CPH.SetArgument("targetIsVip", userInfos.IsVIP);
                 CPH.SetArgument("targetIsFollowing", userInfos.IsFollowing);
-                CPH.SetArgument("targetChannelTitle", String.Empty);
-                CPH.SetArgument("game", null);
-                CPH.SetArgument("gameId", null);
+                CPH.SetArgument("targetChannelTitle", channelInfos.LiveStream?.SessionTitle ?? String.Empty);
+                CPH.SetArgument("game", channelInfos.LiveStream?.Categories.First()?.Name);
+                CPH.SetArgument("gameId", channelInfos.LiveStream?.Categories.First()?.Id);
                 CPH.SetArgument("createdAt", DateTime.Now);
-                CPH.SetArgument("accountAge", 0);
+                CPH.SetArgument("accountAge", Convert.ToInt64((DateTime.Now - channelInfos.Chatroom.CreatedAt).TotalSeconds));
                 CPH.SetArgument("tagCount", 0);
                 CPH.SetArgument("tags", new List<string>());
                 CPH.SetArgument("tagsDelimited", String.Empty);
 
                 if (channelInfos.LiveStream != null)
                 {
-                    CPH.SetArgument("targetChannelTitle", channelInfos.LiveStream.SessionTitle);
-                    CPH.SetArgument("game", channelInfos.LiveStream.Categories?[0]?.Name);
-                    CPH.SetArgument("gameId", channelInfos.LiveStream.Categories?[0]?.Id);
-
                     CPH.SetArgument("tagCount", channelInfos.LiveStream.Tags.Count);
                     CPH.SetArgument("tags", channelInfos.LiveStream.Tags);
                     int tagId = 0;
