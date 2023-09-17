@@ -198,6 +198,9 @@ namespace Kick.Bot
                 if (AuthenticatedUser == null)
                     throw new Exception("authentification requise");
 
+                if(username.StartsWith("@"))
+                    username = username.Substring(1);
+
 
                 Channel channelInfos = null;
                 ChannelUser userInfos = null;
