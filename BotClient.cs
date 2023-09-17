@@ -162,9 +162,13 @@ namespace Kick.Bot
         {
             try
             {
-                if(args.TryGetValue("userName", out var userName))
+                if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != String.Empty)
+                    GetKickChannelInfos(args, channel, Convert.ToString(userName), true);
+                else if (args.TryGetValue("targetUser", out var user) && user != null && user != String.Empty)
+                    GetKickChannelInfos(args, channel, Convert.ToString(user));
+                else if (args.TryGetValue("userName", out userName) && userName != null && userName != String.Empty)
                     GetKickChannelInfos(args, channel, Convert.ToString(userName) , true);
-                else if (args.TryGetValue("user", out var user))
+                else if (args.TryGetValue("user", out user) && user != null && user != String.Empty)
                     GetKickChannelInfos(args, channel, Convert.ToString(user));
                 else
                     GetKickChannelInfos(args, channel, channel.Slug, true);
@@ -254,7 +258,7 @@ namespace Kick.Bot
 
                     if (categories != null && categories.Count > 0)
                     {
-                        var latestCategory = categories[categories.Count - 1];
+                        var latestCategory = categories.First();
                         CPH.SetArgument("game", latestCategory.Name);
                         CPH.SetArgument("gameId", latestCategory.Id);
                     }
@@ -266,6 +270,12 @@ namespace Kick.Bot
                         CPH.SetArgument("tag" + (tagId++), tag);
                     });
                     CPH.SetArgument("tagsDelimited", String.Join(", ", channelInfos.PreviousLiveStreams[0].Tags.ToArray()));
+                }
+                else if (channelInfos.RecentCategories != null && channelInfos.RecentCategories.Count > 0)
+                {
+                    var latestCategory = channelInfos.RecentCategories.First();
+                    CPH.SetArgument("game", latestCategory.Name);
+                    CPH.SetArgument("gameId", latestCategory.Id);
                 }
             }
             catch (Exception ex)
