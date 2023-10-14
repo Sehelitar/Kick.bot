@@ -33,4 +33,5 @@ Please provide a maximum of informations, including bot logs and instructions to
 
 ## License
 
-This project is distributed under MIT License.
+This project (both source code and releases) are distributed under AGPL 3 license.
+All versions prior to 0.3.6 update are available under MIT licence.

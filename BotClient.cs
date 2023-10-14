@@ -1,19 +1,27 @@
-﻿using Kick;
+﻿/*
+    Copyright (C) 2023 Sehelitar
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 using Kick.Models.Events;
 using Kick.Models.API;
-using Newtonsoft.Json;
 using Streamer.bot.Plugin.Interface;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Net;
-using System.Text.RegularExpressions;
-using System.ComponentModel;
-using System.CodeDom;
-using static Kick.Bot.BotClient;
-using System.Runtime.Remoting.Channels;
 using System.Threading.Tasks;
-using System.Reflection;
 using System.IO;
 using System.Drawing.Imaging;
 using Microsoft.Toolkit.Uwp.Notifications;
@@ -659,7 +667,7 @@ namespace Kick.Bot
                     enable = true;
                 }
 
-                ChatUpdatedEvent updated = Client.SetChannelChatroomEmotesOnly(channel, enable).Result;
+                ChatUpdatedEvent updated = Client.SetChannelChatroomBotProtection(channel, enable).Result;
 
                 CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
                 CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
@@ -686,7 +694,7 @@ namespace Kick.Bot
                 int? duration = null;
                 if (args.TryGetValue("duration", out var rawDuration))
                 {
-                    duration = Convert.ToInt32(rawDuration);
+                    duration = Math.Min(Convert.ToInt32(rawDuration), 600); // Kick limite à 10h (600 minutes) max
                 }
 
                 ChatUpdatedEvent updated = Client.SetChannelChatroomFollowersMode(channel, duration).Result;
@@ -716,10 +724,10 @@ namespace Kick.Bot
                 int? interval = null;
                 if (args.TryGetValue("interval", out var rawInterval))
                 {
-                    interval = Convert.ToInt32(rawInterval);
+                    interval = Math.Min(Convert.ToInt32(rawInterval), 300); // Kick limite l'intervale à 5 minutes (300 secondes)
                 }
 
-                ChatUpdatedEvent updated = Client.SetChannelChatroomFollowersMode(channel, interval).Result;
+                ChatUpdatedEvent updated = Client.SetChannelChatroomSlowMode(channel, interval).Result;
 
                 CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
                 CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
