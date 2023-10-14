@@ -158,7 +158,7 @@ namespace Kick.Bot
         {
             try
             {
-                if (followEvent.Channel.Id != Channel.Id)
+                if (followEvent.Channel.Id != Channel.Id || !followEvent.IsFollowing)
                     return;
 
                 CPH.LogDebug($"[Kick] Nouveau follower : {followEvent.User.Username}");

@@ -583,7 +583,156 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement du titre : {ex}");
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de la création du clip : {ex}");
+            }
+        }
+
+        public void ChatEmotesOnly(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("enable", out var enable))
+                {
+                    channel = Client.GetChannelInfos(channel.Slug).Result;
+                    enable = !channel.Chatroom.IsEmotesOnly;
+                }
+
+                ChatUpdatedEvent updated = Client.SetChannelChatroomEmotesOnly(channel, enable).Result;
+
+                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+            }
+        }
+
+        public void ChatSubsOnly(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("enable", out var enable))
+                {
+                    channel = Client.GetChannelInfos(channel.Slug).Result;
+                    enable = !channel.Chatroom.IsSubOnly;
+                }
+
+                ChatUpdatedEvent updated = Client.SetChannelChatroomSubscribersOnly(channel, enable).Result;
+
+                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+            }
+        }
+
+        public void ChatBotProtection(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                if (!args.TryGetValue("enable", out var enable))
+                {
+                    enable = true;
+                }
+
+                ChatUpdatedEvent updated = Client.SetChannelChatroomEmotesOnly(channel, enable).Result;
+
+                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+            }
+        }
+
+        public void ChatFollowersOnly(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                int? duration = null;
+                if (args.TryGetValue("duration", out var rawDuration))
+                {
+                    duration = Convert.ToInt32(rawDuration);
+                }
+
+                ChatUpdatedEvent updated = Client.SetChannelChatroomFollowersMode(channel, duration).Result;
+
+                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+            }
+        }
+
+        public void ChatSlowMode(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentification requise");
+
+                int? interval = null;
+                if (args.TryGetValue("interval", out var rawInterval))
+                {
+                    interval = Convert.ToInt32(rawInterval);
+                }
+
+                ChatUpdatedEvent updated = Client.SetChannelChatroomFollowersMode(channel, interval).Result;
+
+                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
             }
         }
     }

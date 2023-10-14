@@ -45,10 +45,7 @@ namespace Kick.Bot
 
         public static bool Evaluate(ChatMessageEvent chatMessageEvent)
         {
-            // [V] Vérifier si la commande est valide
-            // [V] Vérifier si l'utilisateur a le droit de lancer la commande
-            // [V] Vérifier le cooldown de la commande
-            // [V] Si OK, incrémenter les compteurs et les stocker si nécessaire
+            var isCommand = false;
 
             foreach (BotChatCommand botCommand in commands)
             {
@@ -221,7 +218,8 @@ namespace Kick.Bot
                     CPH.TriggerCodeEvent($"kickChatCommandCooldown.{botCommand.CommandInfo.Id}", cdArguments);
                     CPH.TriggerCodeEvent(BotEventListener.BotEventType.ChatCommandCooldown, cdArguments);
 
-                    return true;
+                    isCommand = true;
+                    continue;
                 }
 
                 /* Incrémentation des compteurs */
@@ -273,10 +271,10 @@ namespace Kick.Bot
                 CPH.TriggerCodeEvent($"kickChatCommand.{botCommand.CommandInfo.Id}", arguments);
                 CPH.TriggerCodeEvent(BotEventListener.BotEventType.ChatCommand, arguments);
 
-                return true;
+                isCommand = true;
             }
 
-            return false;
+            return isCommand;
         }
     }
 
