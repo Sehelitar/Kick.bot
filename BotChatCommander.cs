@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using static Kick.Bot.BotClient;
+using System.Linq;
 
 namespace Kick.Bot
 {
@@ -29,30 +30,43 @@ namespace Kick.Bot
 
         public static void ReloadCommands()
         {
-            CPH.LogVerbose($"[Kick] Purge des commandes existantes, puis rechargement de la config.");
-            /*commands.ForEach(botCommand =>
-            {
-                CPH.UnregisterCustomTrigger($"kickChatCommand.{botCommand.CommandInfo.Id}", new string[] { "Kick Chat" });
-                CPH.UnregisterCustomTrigger($"kickChatCommandCooldown.{botCommand.CommandInfo.Id}", new string[] { "Kick Chat" });
-            });*/
-            commands.Clear();
+            CPH.LogVerbose($"[Kick] Rechargement des commandes.");
+
+            var oldCommands = commands;
+            var newCommands = new List<BotChatCommand>();
+
             foreach(StreamerBotCommand botCommand in StreamerBotAppSettings.Commands)
             {
-                var bcc = new BotChatCommand() {
-                    CommandInfo = botCommand,
-                    Counter = CPH.GetGlobalVar<long>("KickCommand.Counters." + botCommand.Id, botCommand.PersistCounter),
-                    UsersCounters = CPH.GetGlobalVar<Dictionary<long, long>>("KickCommand.UsersCounters." + botCommand.Id, botCommand.PersistUserCounter)
-                };
-                if(bcc.UsersCounters == null)
-                    bcc.UsersCounters = new Dictionary<long, long>();
-                
-                commands.Add(bcc);
+                var oldMatchRequest = from oldCommand in oldCommands where oldCommand.CommandInfo.Id == botCommand.Id select oldCommand;
+                if (oldMatchRequest.Count() > 0)
+                {
+                    var oldChatCommand = oldMatchRequest.First();
+                    oldChatCommand.CommandInfo = botCommand;
+
+                    newCommands.Add(oldChatCommand);
+                    CPH.LogVerbose($"[Kick] Commande mise à jour : {botCommand.Command} (Id={botCommand.Id})");
+                }
+                else
+                {
+                    var bcc = new BotChatCommand()
+                    {
+                        CommandInfo = botCommand,
+                        Counter = CPH.GetGlobalVar<long>("KickCommand.Counters." + botCommand.Id, botCommand.PersistCounter),
+                        UsersCounters = CPH.GetGlobalVar<Dictionary<long, long>>("KickCommand.UsersCounters." + botCommand.Id, botCommand.PersistUserCounter)
+                    };
+                    if (bcc.UsersCounters == null)
+                        bcc.UsersCounters = new Dictionary<long, long>();
+
+                    newCommands.Add(bcc);
+                    CPH.LogVerbose($"[Kick] Commande ajoutée : {botCommand.Command} (Id={botCommand.Id})");
+                }
+
                 CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommand.{botCommand.Id}", new string[] { "Kick", "Commands" });
                 CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} [Cooldown] ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommandCooldown.{botCommand.Id}", new string[] { "Kick", "Commands" });
-                
-                CPH.LogVerbose($"[Kick] Commande ajoutée : {botCommand.Command} (Id={botCommand.Id})");
             }
-            CPH.LogVerbose($"[Kick] {StreamerBotAppSettings.Commands.Count} commandes chargées");
+
+            commands = newCommands;
+            CPH.LogVerbose($"[Kick] {commands.Count} commandes chargées");
         }
 
 
@@ -180,7 +194,7 @@ namespace Kick.Bot
                     }
                     else
                     {
-                        botCommand.LastExec = DateTime.Now;
+                        botCommand.UsersLastExec[chatMessageEvent.Sender.Id] = DateTime.Now;
                     }
                 }
                 if (botCommand.CommandInfo.GlobalCooldown > 0)

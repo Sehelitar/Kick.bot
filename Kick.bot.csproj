@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net4.7.2</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
-    <Version>0.3.6.0</Version>
+    <Version>0.3.6.1</Version>
     <Authors>Sehelitar</Authors>
     <Description>Kick Streaming integration for Streamer.bot</Description>
     <Copyright>Sehelitar ©2023</Copyright>
