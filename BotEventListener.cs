@@ -77,8 +77,34 @@ namespace Kick.Bot
                 if (message.ChatroomId != Channel.Chatroom.Id)
                     return;
 
-                CPH.LogVerbose($"[Kick] Chat | {message.Sender.Username} : {message.Content}");
+                CPH.LogVerbose($"[Kick] Chat :: {message.Sender.Username} : {message.Content}");
                 var isCommand = false;
+
+                var firstMessage = true;
+                using (var activity = UserActivity.ForUser(message.Sender.Id))
+                {
+                    firstMessage = activity.FirstMessage == null;
+
+                    activity.UserId = message.Sender.Id;
+                    activity.Username = message.Sender.Username;
+                    activity.Slug = message.Sender.Slug;
+                    activity.IsOG = message.Sender.IsOG;
+                    activity.IsVip = message.Sender.IsVIP;
+                    activity.IsModerator = message.Sender.IsModerator;
+                    activity.IsSubscriber = message.Sender.IsSubscriber;
+                    if (activity.IsFollower)
+                        activity.FollowerSince = activity.FollowerSince ?? DateTime.Now;
+                    else
+                        activity.FollowerSince = null;
+                    if (activity.IsSubscriber)
+                        activity.SubscriberSince = activity.SubscriberSince ?? DateTime.Now;
+                    else
+                        activity.SubscriberSince = null;
+                    activity.FirstMessage = activity.FirstMessage ?? DateTime.Now;
+                    activity.FirstActivity = activity.FirstActivity ?? DateTime.Now;
+                    activity.LastMessage = DateTime.Now;
+                    activity.LastActivity = DateTime.Now;
+                }
 
                 try
                 {
@@ -87,7 +113,7 @@ namespace Kick.Bot
                 }
                 catch (Exception inEx)
                 {
-                    CPH.LogError($"[Kick] Une erreur s'est produite lors de la recherche de commande de chat : {inEx}");
+                    CPH.LogError($"[Kick] An error occured when searching for chat commands : {inEx}");
                 }
 
                 var emoteRE = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
@@ -133,7 +159,7 @@ namespace Kick.Bot
                         { "bits", 0 },
                         { "isAction", false },
                         { "isReply", message.IsReply },
-                        { "firstMessage", false },
+                        { "firstMessage", firstMessage },
 
                         { "isCommand", isCommand },
                         { "fromKick", true }
@@ -142,7 +168,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de réception d'un message dans le chat : {ex}");
+                CPH.LogError($"[Kick] An error occured when handling an incoming chat message : {ex}");
             }
         }
 
@@ -162,7 +188,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de suppression de message : {ex}");
+                CPH.LogError($"[Kick] An error occured on message deletion : {ex}");
             }
         }
 
@@ -174,6 +200,12 @@ namespace Kick.Bot
                     return;
 
                 CPH.LogDebug($"[Kick] Nouveau follower : {followEvent.User.Username}");
+                UpdateActivityDB(followEvent.User);
+                using (var activity = UserActivity.ForUser(followEvent.User.Id))
+                {
+                    activity.IsFollower = true;
+                    activity.FollowerSince = activity.FollowerSince ?? DateTime.Now;
+                }
 
                 if (Followers.Contains(followEvent.User.Id))
                 {
@@ -200,7 +232,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de follow : {ex}");
+                CPH.LogError($"[Kick] An error occured when receiving a new follower : {ex}");
             }
         }
 
@@ -216,6 +248,9 @@ namespace Kick.Bot
                     CPH.LogDebug($"[Kick] Unban de {bannedUserEvent.Banned.Username}");
                     return;
                 }
+
+                UpdateActivityDB(bannedUserEvent.User);
+                UpdateActivityDB(bannedUserEvent.Banned);
 
                 if (bannedUserEvent.Ban.BannedUntil != null && bannedUserEvent.Ban.BannedUntil.HasValue)
                 {
@@ -266,7 +301,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de ban : {ex}");
+                CPH.LogError($"[Kick] An error occured when banning a user : {ex}");
             }
         }
 
@@ -279,6 +314,17 @@ namespace Kick.Bot
 
                 // OnSubGift
                 CPH.LogDebug($"[Kick] Nouveaux gifts de {giftEvent.User.Username} ({giftEvent.GiftedUsers.Length} subs offerts)");
+
+                UpdateActivityDB(giftEvent.User);
+                foreach (var giftTarget in giftEvent.GiftedUsers)
+                {
+                    UpdateActivityDB(giftTarget);
+                    using (var activity = UserActivity.ForUser(giftTarget.Id))
+                    {
+                        activity.IsSubscriber = true;
+                        activity.SubscriberSince = activity.SubscriberSince ?? DateTime.Now;
+                    }
+                }
 
                 if (giftEvent.GiftedUsers == null || giftEvent.GiftedUsers.Length == 0)
                 {
@@ -345,6 +391,13 @@ namespace Kick.Bot
             {
                 if (subEvent.Channel.Id != Channel.Id)
                     return;
+
+                UpdateActivityDB(subEvent.User);
+                using (var activity = UserActivity.ForUser(subEvent.User.Id))
+                {
+                    activity.IsSubscriber = true;
+                    activity.SubscriberSince = activity.SubscriberSince ?? DateTime.Now;
+                }
 
                 if (subEvent.IsNewSubscriber)
                 {
@@ -713,6 +766,8 @@ namespace Kick.Bot
                 if (raidEvent.Channel.Id != Channel.Id)
                     return;
 
+                UpdateActivityDB(raidEvent.User);
+
                 SendToQueue(new BotEvent()
                 {
                     ActionId = BotEventType.Raid,
@@ -728,6 +783,18 @@ namespace Kick.Bot
             catch (Exception ex)
             {
                 CPH.LogError($"[Kick] Une erreur s'est produite lors du déclenchement d'un évènement de démarrage de stream : {ex.Message}");
+            }
+        }
+
+        private void UpdateActivityDB(EventUser user)
+        {
+            using (var activity = UserActivity.ForUser(user.Id))
+            {
+                activity.UserId = user.Id;
+                activity.Username = user.Username;
+                activity.Slug = user.Slug;
+                activity.FirstActivity = activity.FirstActivity ?? DateTime.Now;
+                activity.LastActivity = DateTime.Now;
             }
         }
 
@@ -759,6 +826,5 @@ namespace Kick.Bot
             public string ActionId { get; set; }
             public Dictionary<string, object> Arguments { get; set; }
         }
-
     }
 }

@@ -26,13 +26,17 @@ using System.IO;
 using System.Drawing.Imaging;
 using Microsoft.Toolkit.Uwp.Notifications;
 using System.Linq;
+using LiteDB;
+using System.Security.Policy;
 
 namespace Kick.Bot
 {
     public sealed class BotClient
     {
         public static IInlineInvokeProxy CPH;
-        
+
+        internal static LiteDatabase Database;
+
         internal KickClient Client { get; private set; }
 
         public User AuthenticatedUser { get; private set; }
@@ -69,11 +73,13 @@ namespace Kick.Bot
 
             CPH.LogDebug("[Kick] Démarrage du bot Kick");
             Client = new KickClient();
+            Database = new LiteDatabase(@"data\kick.db");
         }
 
         ~BotClient()
         {
             CPH.LogDebug("[Kick] Arrêt du bot Kick");
+            Database.Dispose();
         }
 
         public async Task Authenticate()
