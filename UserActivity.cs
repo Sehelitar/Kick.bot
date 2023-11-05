@@ -1,15 +1,28 @@
-﻿using Kick.Models.API;
+﻿/*
+    Copyright (C) 2023 Sehelitar
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+using LiteDB;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Kick.Bot
 {
     public class UserActivity : IDisposable
     {
-        public int Id { get; set; }
+        [BsonId(false)]
         public long UserId { get; set; }
         public string Username { get; set; }
         public string Slug { get; set; }
@@ -29,14 +42,14 @@ namespace Kick.Bot
         {
             var dbCollection = BotClient.Database.GetCollection<UserActivity>("users");
             dbCollection.Upsert(this);
-            dbCollection.EnsureIndex(x => x.UserId, true);
+            dbCollection.EnsureIndex("ByUserId", x => x.UserId, true);
         }
 
         public static UserActivity ForUser(long userId)
         {
             var dbCollection = BotClient.Database.GetCollection<UserActivity>("users");
             var activityQuery = from activityObject in dbCollection.Query() where activityObject.UserId == userId select activityObject;
-            return activityQuery.FirstOrDefault();
+            return activityQuery.FirstOrDefault() ?? new UserActivity();
         }
     }
 }

@@ -27,7 +27,6 @@ using System.Drawing.Imaging;
 using Microsoft.Toolkit.Uwp.Notifications;
 using System.Linq;
 using LiteDB;
-using System.Security.Policy;
 
 namespace Kick.Bot
 {
@@ -71,25 +70,26 @@ namespace Kick.Bot
             var target = Path.GetTempPath() + "KickLogo.png";
             Properties.Resources.KickLogo.Save(target, ImageFormat.Png);
 
-            CPH.LogDebug("[Kick] Démarrage du bot Kick");
+            CPH.LogDebug("[Kick] Extension loaded. Starting...");
             Client = new KickClient();
-            Database = new LiteDatabase(@"data\kick.db");
+            Database = new LiteDatabase(@"data\kick-ext.db");
+            CommandCounter.PruneVolatile();
         }
 
         ~BotClient()
         {
-            CPH.LogDebug("[Kick] Arrêt du bot Kick");
-            Database.Dispose();
+            CPH.LogDebug("[Kick] Extension is shuting down");
+            Database.Checkpoint();
+            Database = null;
         }
 
         public async Task Authenticate()
         {
-            CPH.LogDebug("[Kick] Authentification...");
+            CPH.LogDebug("[Kick] Authentication...");
             AuthenticatedUser = await Client.Authenticate();
-            CPH.LogDebug($"[Kick] Connecté en tant que {AuthenticatedUser.Username}");
+            CPH.LogDebug($"[Kick] Connected as {AuthenticatedUser.Username}");
 
             var target = Path.GetTempPath() + "KickLogo.png";
-            //CPH.ShowToastNotification("Kick", $"Successfuly connected as {AuthenticatedUser.UserName}", "via Kick.bot", target);
             new ToastContentBuilder()
                 .AddText("Kick")
                 .AddText($"Successfuly connected as {AuthenticatedUser.Username}")
@@ -101,9 +101,9 @@ namespace Kick.Bot
         public async Task<BotEventListener> StartListeningTo(string channelName)
         {
             if (AuthenticatedUser == null)
-                throw new Exception("Authentification requise");
+                throw new Exception("authentication required");
 
-            CPH.LogDebug($"[Kick] Mise en place de l'écoute des évènements pour la chaine de {channelName}");
+            CPH.LogDebug($"[Kick] Listening events for channel {channelName}");
             var channel = await Client.GetChannelInfos(channelName);
             return new BotEventListener(Client.GetEventListener(), channel);
         }
@@ -111,9 +111,9 @@ namespace Kick.Bot
         public async Task<BotEventListener> StartListeningToSelf()
         {
             if (AuthenticatedUser == null)
-                throw new Exception("Authentification requise");
+                throw new Exception("Authentication required");
 
-            CPH.LogDebug($"[Kick] Mise en place de l'écoute des évènements pour la chaine de {AuthenticatedUser.StreamerChannel.Slug}");
+            CPH.LogDebug($"[Kick] Listening events for channel {AuthenticatedUser.StreamerChannel.Slug}");
             var channel = await Client.GetChannelInfos(AuthenticatedUser.StreamerChannel.Slug);
             return new BotEventListener(Client.GetEventListener(), channel);
         }
@@ -122,20 +122,20 @@ namespace Kick.Bot
         {
             try {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (args.TryGetValue("chatroomId", out var chatroomId))
                     chatroomId = Convert.ToInt64(chatroomId);
                 else if (channel != null)
                     chatroomId = channel.Chatroom.Id;
                 else
-                    throw new Exception("argument chatroomId manquant.");
+                    throw new Exception("missing argument, chatroomId required");
 
                 Client.SendMessageToChatroom(chatroomId, Convert.ToString(args["message"])).Wait();
             }
             catch(Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'envoi du message : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while sending a message to chatroom : {ex}");
             }
         }
 
@@ -144,14 +144,14 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (args.TryGetValue("chatroomId", out var chatroomId))
                     chatroomId = Convert.ToInt64(chatroomId);
                 else if (channel != null)
                     chatroomId = channel.Chatroom.Id;
                 else
-                    throw new Exception("argument chatroomId manquant.");
+                    throw new Exception("missing argument, chatroomId required");
                 string message = String.Empty;
                 if (args.TryGetValue("rawInput", out var rawInput))
                     message = Convert.ToString(rawInput);
@@ -168,7 +168,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'envoi de la réponse : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while sending a reply : {ex}");
             }
         }
 
@@ -189,7 +189,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'envoi de la réponse : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while fetching user infos : {ex}");
             }
         }
 
@@ -201,7 +201,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'envoi de la réponse : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while fetching broadcaster infos : {ex}");
             }
         }
 
@@ -210,7 +210,7 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if(username.StartsWith("@"))
                     username = username.Substring(1);
@@ -297,7 +297,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'envoi de la réponse : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while fetching channel infos : {ex}");
             }
         }
 
@@ -306,16 +306,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 Client.AddChannelVip(channel, username).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'ajout du VIP : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while adding a new VIP : {ex}");
             }
         }
 
@@ -324,16 +324,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 Client.RemoveChannelVip(channel, username).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du retrait du VIP : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while removing a VIP : {ex}");
             }
         }
 
@@ -342,16 +342,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 Client.AddChannelOG(channel, username).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'ajout du OG : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while adding a new OG : {ex}");
             }
         }
 
@@ -360,16 +360,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 Client.RemoveChannelOG(channel, username).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du retrait du OG : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while removing an OG : {ex}");
             }
         }
 
@@ -378,16 +378,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 Client.AddChannelModerator(channel, username).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de l'ajout du modérateur : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while adding a moderator : {ex}");
             }
         }
 
@@ -396,16 +396,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 Client.RemoveChannelModerator(channel, username).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du retrait du modérateur : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while removing a moderator : {ex}");
             }
         }
 
@@ -414,10 +414,10 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 if (!args.TryGetValue("banReason", out var banReason))
                     banReason = "";
@@ -426,7 +426,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du banissement : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while banning a user : {ex}");
             }
         }
 
@@ -435,13 +435,13 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 if (!args.TryGetValue("banDuration", out var banDuration))
-                    throw new Exception("durée manquante.");
+                    throw new Exception("missing argument, banDuration required");
 
                 if (!args.TryGetValue("banReason", out var banReason))
                     banReason = "";
@@ -450,7 +450,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du timeout : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while temporarily banning a user : {ex}");
             }
         }
 
@@ -459,16 +459,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("user", out var username))
-                    throw new Exception("nom d'utilisateur manquant.");
+                    throw new Exception("missing argument, user required");
 
                 Client.UnbanUser(channel, (string)username).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du timeout : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
             }
         }
 
@@ -477,25 +477,25 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("pollTitle", out var title))
-                    throw new Exception("titre manquant.");
+                    throw new Exception("missing argument, pollTitle required");
 
                 if (!args.TryGetValue("pollDuration", out var duration))
-                    throw new Exception("durée manquante.");
+                    throw new Exception("missing argument, pollDuration required");
                  
                 if (!args.TryGetValue("pollDisplayTime", out var displayTime))
                     displayTime = 30;
 
                 if (!args.TryGetValue("pollChoices", out var choices))
-                    throw new Exception("options manquantes.");
+                    throw new Exception("missing argument, pollChoices required");
 
                 Client.StartPoll(channel, (string)title, ((string)choices).Split('|'), Convert.ToInt32(duration), Convert.ToInt32(displayTime)).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du démarrage du sondage : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while starting a new poll : {ex}");
             }
         }
 
@@ -504,16 +504,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("title", out var title))
-                    throw new Exception("titre manquant.");
+                    throw new Exception("missing argument, title required");
 
                 Client.SetChannelTitle(channel, (string)title).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement du titre : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while changing stream title : {ex}");
             }
         }
 
@@ -522,16 +522,16 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("category", out var category))
-                    throw new Exception("catégorie manquante.");
+                    throw new Exception("missing argument, category required");
 
                 Client.SetChannelCategory(channel, (string)category).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de catégorie : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while changing stream category : {ex}");
             }
         }
 
@@ -540,13 +540,13 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 Client.ClearChat(channel).Wait();
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement du titre : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while clearing chat : {ex}");
             }
         }
 
@@ -555,7 +555,7 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 args.TryGetValue("title", out var title);
 
@@ -597,7 +597,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors de la création du clip : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while trying to create to clip : {ex}");
             }
         }
 
@@ -606,7 +606,7 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("enable", out var enable))
                 {
@@ -627,7 +627,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
             }
         }
 
@@ -636,7 +636,7 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("enable", out var enable))
                 {
@@ -657,7 +657,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
             }
         }
 
@@ -666,7 +666,7 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 if (!args.TryGetValue("enable", out var enable))
                 {
@@ -686,7 +686,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat protection : {ex}");
             }
         }
 
@@ -695,7 +695,7 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 int? duration = null;
                 if (args.TryGetValue("duration", out var rawDuration))
@@ -716,7 +716,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
             }
         }
 
@@ -725,7 +725,7 @@ namespace Kick.Bot
             try
             {
                 if (AuthenticatedUser == null)
-                    throw new Exception("authentification requise");
+                    throw new Exception("authentication required");
 
                 int? interval = null;
                 if (args.TryGetValue("interval", out var rawInterval))
@@ -746,7 +746,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] Une erreur s'est produite lors du changement de mode de chat : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
             }
         }
     }

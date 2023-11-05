@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using static Kick.Bot.BotClient;
 using System.Linq;
+using LiteDB;
 
 namespace Kick.Bot
 {
@@ -30,7 +31,7 @@ namespace Kick.Bot
 
         public static void ReloadCommands()
         {
-            CPH.LogVerbose($"[Kick] Rechargement des commandes.");
+            CPH.LogVerbose($"[Kick] Commands reloaded.");
 
             var oldCommands = commands;
             var newCommands = new List<BotChatCommand>();
@@ -44,21 +45,17 @@ namespace Kick.Bot
                     oldChatCommand.CommandInfo = botCommand;
 
                     newCommands.Add(oldChatCommand);
-                    CPH.LogVerbose($"[Kick] Commande mise à jour : {botCommand.Command} (Id={botCommand.Id})");
+                    CPH.LogVerbose($"[Kick] Command updated : {botCommand.Command} (Id={botCommand.Id})");
                 }
                 else
                 {
                     var bcc = new BotChatCommand()
                     {
-                        CommandInfo = botCommand,
-                        Counter = CPH.GetGlobalVar<long>("KickCommand.Counters." + botCommand.Id, botCommand.PersistCounter),
-                        UsersCounters = CPH.GetGlobalVar<Dictionary<long, long>>("KickCommand.UsersCounters." + botCommand.Id, botCommand.PersistUserCounter)
+                        CommandInfo = botCommand
                     };
-                    if (bcc.UsersCounters == null)
-                        bcc.UsersCounters = new Dictionary<long, long>();
 
                     newCommands.Add(bcc);
-                    CPH.LogVerbose($"[Kick] Commande ajoutée : {botCommand.Command} (Id={botCommand.Id})");
+                    CPH.LogVerbose($"[Kick] Command added : {botCommand.Command} (Id={botCommand.Id})");
                 }
 
                 CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommand.{botCommand.Id}", new string[] { "Kick", "Commands" });
@@ -66,7 +63,7 @@ namespace Kick.Bot
             }
 
             commands = newCommands;
-            CPH.LogVerbose($"[Kick] {commands.Count} commandes chargées");
+            CPH.LogVerbose($"[Kick] {commands.Count} commands loaded");
         }
 
 
@@ -174,11 +171,11 @@ namespace Kick.Bot
                 // Si l'utilisateur n'est pas autorisé à utiliser cette commande, on passe à la suivante
                 if (!userPermitted)
                 {
-                    CPH.LogDebug($"[Kick] Commande rejetée, droits insuffisants. Caster={chatMessageEvent.Sender.IsBroadcaster} Mod={chatMessageEvent.Sender.IsModerator} VIP={chatMessageEvent.Sender.IsVIP} OG={chatMessageEvent.Sender.IsOG} Sub={chatMessageEvent.Sender.IsSubscriber}");
+                    CPH.LogDebug($"[Kick] Command access denied. Caster={chatMessageEvent.Sender.IsBroadcaster} Mod={chatMessageEvent.Sender.IsModerator} VIP={chatMessageEvent.Sender.IsVIP} OG={chatMessageEvent.Sender.IsOG} Sub={chatMessageEvent.Sender.IsSubscriber}");
                     continue;
                 }
 
-                CPH.LogVerbose($"[Kick] Commande détectée ! {botCommand.CommandInfo.Command}");
+                CPH.LogVerbose($"[Kick] Command detected! {botCommand.CommandInfo.Command}");
 
                 /* Vérification des cooldowns */
                 bool onCooldown = false;
@@ -250,15 +247,18 @@ namespace Kick.Bot
                 }
 
                 /* Incrémentation des compteurs */
-                ++botCommand.Counter;
-                CPH.SetGlobalVar("KickCommand.Counters." + botCommand.CommandInfo.Id, botCommand.Counter, botCommand.CommandInfo.PersistCounter);
+                var globalCurrentCounter = 0L;
+                var userCurrentCounter = 0L;
 
-                if (!botCommand.UsersCounters.TryGetValue(chatMessageEvent.Sender.Id, out var userCurrentCounter))
-                    userCurrentCounter = 0;
-                ++userCurrentCounter;
-                botCommand.UsersCounters.Remove(chatMessageEvent.Sender.Id);
-                botCommand.UsersCounters.Add(chatMessageEvent.Sender.Id, userCurrentCounter);
-                CPH.SetGlobalVar("KickCommand.UsersCounters." + botCommand.CommandInfo.Id, botCommand.UsersCounters, botCommand.CommandInfo.PersistUserCounter);
+                using (var globalCounter = CommandCounter.GlobalCounterForCommand(botCommand.CommandInfo.Id, botCommand.CommandInfo.PersistCounter))
+                {
+                    globalCurrentCounter = ++globalCounter.Counter;
+                }
+
+                using (var userCounter = CommandCounter.CounterForCommandUser(botCommand.CommandInfo.Id, chatMessageEvent.Sender.Id, botCommand.CommandInfo.PersistUserCounter))
+                {
+                    userCurrentCounter = ++userCounter.Counter;
+                }
 
                 // Fini ! Si on arrive là, c'est que la commande est valide, on peut la lancer
                 var arguments = new Dictionary<string, object>() {
@@ -283,7 +283,7 @@ namespace Kick.Bot
                     { "msgId", chatMessageEvent.Id },
                     { "chatroomId", chatMessageEvent.ChatroomId },
                     { "role", role },
-                    { "counter", botCommand.Counter },
+                    { "counter", globalCurrentCounter },
                     { "userCounter", userCurrentCounter },
                     { "fromKick", true }
                 };
@@ -310,7 +310,51 @@ namespace Kick.Bot
         public StreamerBotCommand CommandInfo;
         public DateTime? LastExec = null;
         public Dictionary<long, DateTime> UsersLastExec = new Dictionary<long, DateTime>();
-        public long Counter = 0;
-        public Dictionary<long, long> UsersCounters = new Dictionary<long, long>();
+    }
+
+    internal class CommandCounter : IDisposable
+    {
+        internal const string PersistentCollection = "counters";
+        internal const string VolatileCollection = "counters_tmp";
+
+        [BsonId]
+        public long Id { get; set; }
+        public string CommandId { get; set; } = null;
+        public long? UserId { get; set; } = null;
+        public long Counter { get; set; } = 0;
+        [BsonIgnore]
+        public bool Persist { get; set; } = true;
+
+        public void Dispose()
+        {
+            var dbCollection = Database.GetCollection<CommandCounter>(Persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+            dbCollection.Upsert(this);
+            dbCollection.EnsureIndex("ByCommand", x => x.CommandId, false);
+            dbCollection.EnsureIndex("ByUser", x => x.UserId, false);
+            dbCollection.EnsureIndex("ByKey", BsonExpression.Create("{Command:$.CommandId,User:$.UserId}"), true);
+        }
+
+        public static CommandCounter GlobalCounterForCommand(string commandId, bool persist = true)
+        {
+            var dbCollection = Database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+            var counterQuery = from counterObject in dbCollection.Query() where counterObject.CommandId == commandId && counterObject.UserId == null select counterObject;
+            var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, Persist = persist };
+            result.Persist = persist;
+            return result;
+        }
+
+        public static CommandCounter CounterForCommandUser(string commandId, long userId, bool persist = true)
+        {
+            var dbCollection = Database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+            var counterQuery = from counterObject in dbCollection.Query() where counterObject.CommandId == commandId && counterObject.UserId == userId select counterObject;
+            var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, UserId = userId, Persist = persist };
+            result.Persist = persist;
+            return result;
+        }
+
+        public static void PruneVolatile()
+        {
+            Database.DropCollection(VolatileCollection);
+        }
     }
 }
