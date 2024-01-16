@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023 Sehelitar
+    Copyright (C) 2023-2024 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -62,7 +62,7 @@ namespace Kick.Bot
         
 
         ~BotEventListener() {
-            EventListener.LeaveAsync(Channel);
+            _ = EventListener.LeaveAsync(Channel);
         }
 
         private void SendToQueue(BotEvent botEvent)
@@ -165,6 +165,8 @@ namespace Kick.Bot
                         { "fromKick", true }
                     }
                 });
+
+                BotTimedActionManager.MessageReceived();
             }
             catch (Exception ex)
             {

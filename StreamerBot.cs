@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023 Sehelitar
+    Copyright (C) 2023-2024 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -26,6 +26,7 @@ namespace Kick.Bot
     internal class StreamerBotAppSettings
     {
         private static StreamerBotCommands _commands;
+        private static StreamerBotSettings _settings;
         private static FileSystemWatcher _configWatcher;
 
         public static List<StreamerBotCommand> Commands
@@ -37,6 +38,18 @@ namespace Kick.Bot
                     Load();
                 }
                 return _commands.Commands;
+            }
+        }
+
+        public static StreamerBotSettings Settings
+        {
+            get
+            {
+                if (_settings == null)
+                {
+                    Load();
+                }
+                return _settings;
             }
         }
 
@@ -62,6 +75,8 @@ namespace Kick.Bot
             {
                 if (e.Name == "commands.json")
                     LoadCommandsSettings();
+                if (e.Name == "settings.json")
+                    LoadSettings();
             };
         }
 
@@ -76,7 +91,7 @@ namespace Kick.Bot
 
         private static void LoadCommandsSettings()
         {
-            BotClient.CPH?.LogVerbose("[Kick] Chargement des commandes de chat");
+            BotClient.CPH?.LogVerbose("[Kick] Loading chat commands");
             var fs = new FileStream("./data/commands.json", FileMode.Open);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();
@@ -92,9 +107,28 @@ namespace Kick.Bot
             timer.Start();
         }
 
+        private static void LoadSettings()
+        {
+            BotClient.CPH?.LogVerbose("[Kick] Loading main cofiguration");
+            var fs = new FileStream("./data/settings.json", FileMode.Open);
+            var config = new StreamReader(fs).ReadToEnd();
+            fs.Close();
+            _settings = JsonConvert.DeserializeObject<StreamerBotSettings>(config);
+
+            Timer timer = new Timer(1000);
+            timer.Elapsed += delegate
+            {
+                timer.Stop();
+                BotTimedActionManager.ReloadTimedActions();
+                timer.Close();
+            };
+            timer.Start();
+        }
+
         public static void Load()
         {
             LoadCommandsSettings();
+            LoadSettings();
             StartWatcher();
         }
     }
@@ -141,5 +175,33 @@ namespace Kick.Bot
         public string Group { get; set; } = String.Empty;
         [JsonProperty("grantType")]
         public int GrantType { get; set; } = 0;
+    }
+
+    internal class StreamerBotSettings
+    {
+        [JsonProperty("timedActions")]
+        public TimedActionsSettings TimedActions { get; set; }
+    }
+
+    internal class TimedActionsSettings
+    {
+        [JsonProperty("timers")]
+        public List<TimedAction> Timers { get; set; }
+    }
+
+    internal class TimedAction
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+        [JsonProperty("name")]
+        public string Name { get; set; }
+        [JsonProperty("enabled")]
+        public bool Enabled { get; set; } = true;
+        public bool Repeat { get; set; } = false;
+        public int Interval { get; set; } = 0;
+        public bool RandomInterval { get; set; } = false;
+        public int UpperInterval { get; set; } = 0;
+        public int Lines { get; set; } = 0;
+        public int Counter { get; set; } = 0;
     }
 }

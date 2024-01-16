@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023 Sehelitar
+    Copyright (C) 2023-2024 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -241,6 +241,7 @@ namespace Kick.Bot
                 CPH.SetArgument("targetUserType", channelInfos.IsVerified ? "partner" : (channelInfos.IsAffiliate ? "affiliate" : String.Empty));
                 CPH.SetArgument("targetIsAffiliate", channelInfos.IsAffiliate);
                 CPH.SetArgument("targetIsPartner", channelInfos.IsVerified);
+                CPH.SetArgument("targetFollowers", channelInfos.FollowersCount);
                 CPH.SetArgument("targetLastActive", DateTime.Now);
                 CPH.SetArgument("targetPreviousActive", DateTime.Now);
                 CPH.SetArgument("targetIsSubscribed", userInfos.IsSubscriber);
@@ -743,6 +744,49 @@ namespace Kick.Bot
                 CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
                 CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
                 CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+            }
+        }
+
+        public void GetClips(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                int count = 20;
+                if (args.TryGetValue("count", out var rawCount))
+                {
+                    count = Convert.ToInt32(rawCount);
+                }
+
+                string orderBy = "date";
+                if (args.TryGetValue("orderBy", out var rawOrderBy))
+                {
+                    orderBy = rawOrderBy;
+                }
+
+                string timeRange = "date";
+                if (args.TryGetValue("timeRange", out var rawTimeRange))
+                {
+                    timeRange = rawTimeRange;
+                }
+
+                var clips = Client.GetLatestClips(channel, count, orderBy, timeRange).Result;
+
+                for(int i = 0; i < clips.Count; i++)
+                {
+                    var clip = clips[i];
+                    CPH.SetArgument($"clip{i}.id", clip.Id);
+                    CPH.SetArgument($"clip{i}.title", clip.Title);
+                    CPH.SetArgument($"clip{i}.preview", clip.ThumbnailUrl);
+                    CPH.SetArgument($"clip{i}.video", clip.ClipUrl);
+                    CPH.SetArgument($"clip{i}.link", $"https://kick.com/{channel.Slug}?clip={clip.Id}");
+                }
             }
             catch (Exception ex)
             {
