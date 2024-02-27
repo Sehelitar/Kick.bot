@@ -89,7 +89,7 @@ namespace Kick.Bot
                         var textCommands = botCommand.CommandInfo.Command.Replace("\r\n", "\n").Split('\n');
                         foreach (var textCommand in textCommands)
                         {
-                            var command = textCommand.Trim();
+                            var command = textCommand;
                             // Si le texte de la commande est vide, on ignore
                             if (command.Length < 2)
                                 continue;

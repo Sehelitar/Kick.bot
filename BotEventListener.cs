@@ -161,6 +161,8 @@ namespace Kick.Bot
                         { "isReply", message.IsReply },
                         { "firstMessage", firstMessage },
 
+                        { "pinnableMessage", Newtonsoft.Json.JsonConvert.SerializeObject(message) },
+
                         { "isCommand", isCommand },
                         { "fromKick", true }
                     }

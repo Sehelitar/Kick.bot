@@ -793,5 +793,42 @@ namespace Kick.Bot
                 CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
             }
         }
+
+        public void PinMessage(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                if (!args.TryGetValue("pinnableMessage", out var message))
+                    throw new Exception("missing argument, message required");
+
+                if (!args.TryGetValue("pinDuration", out var duration))
+                    duration = 120;
+
+                var originalMessage = Newtonsoft.Json.JsonConvert.DeserializeObject<ChatMessageEvent>(message);
+                Client.PinMessage(channel, originalMessage, duration).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+            }
+        }
+
+        public void UnpinMessage(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                Client.UnpinMessage(channel).Wait();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to unpin a message : {ex}");
+            }
+        }
     }
 }
