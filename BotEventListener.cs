@@ -53,6 +53,8 @@ namespace Kick.Bot
             EventListener.OnStreamEnded += Kick_OnStreamEnded;
             EventListener.OnStreamUpdated += Kick_OnStreamUpdated;
             EventListener.OnRaid += Kick_OnRaid;
+            EventListener.OnMessagePinned += Kick_OnMessagePinned;
+            EventListener.OnMessageUnpinned += Kick_OnMessageUnpinned;
 
             EventListener.JoinAsync(Channel).Wait();
 
@@ -776,8 +778,8 @@ namespace Kick.Bot
                 {
                     ActionId = BotEventType.Raid,
                     Arguments = new Dictionary<string, object>() {
-                        { "user", raidEvent.User.Username },
-                        { "viewers", raidEvent.Host.ViewersCount },
+                        { "user", raidEvent.Host },
+                        { "viewers", raidEvent.ViewersCount },
 
                         { "eventSource", "kick" },
                         { "fromKick", true }
@@ -787,6 +789,85 @@ namespace Kick.Bot
             catch (Exception ex)
             {
                 CPH.LogError($"[Kick] An error occurred when a raid appeared : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnMessagePinned(PinnedMessageEvent pinnedMessageEvent)
+        {
+            try
+            {
+                if (pinnedMessageEvent.Message.ChatroomId != Channel.Chatroom.Id)
+                    return;
+
+                var emoteRE = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
+                var messageStripped = emoteRE.Replace(pinnedMessageEvent.Message.Content, "");
+                var emotes = emoteRE.Matches(pinnedMessageEvent.Message.Content);
+                List<string> emotesList = new List<string>();
+                for (int i = 0; i < emotes.Count; ++i)
+                {
+                    emotesList.Add(emotes[i].Value);
+                }
+
+                int role = 1;
+                if (pinnedMessageEvent.Message.Sender.IsVIP)
+                    role = 2;
+                if (pinnedMessageEvent.Message.Sender.IsModerator)
+                    role = 3;
+                if (pinnedMessageEvent.Message.Sender.IsBroadcaster)
+                    role = 4;
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.MessagePinned,
+                    Arguments = new Dictionary<string, object>() {
+                        { "user", pinnedMessageEvent.Message.Sender.Username },
+                        { "userName", pinnedMessageEvent.Message.Sender.Slug },
+                        { "userId", pinnedMessageEvent.Message.Sender.Id },
+                        { "userType", "kick" },
+                        { "isSubscribed", pinnedMessageEvent.Message.Sender.IsSubscriber },
+                        { "isModerator", pinnedMessageEvent.Message.Sender.IsModerator },
+                        { "isVip", pinnedMessageEvent.Message.Sender.IsVIP },
+                        { "eventSource", "kick" },
+
+                        { "msgId", pinnedMessageEvent.Message.Id },
+                        { "chatroomId", pinnedMessageEvent.Message.ChatroomId },
+                        { "role", role },
+                        { "color", pinnedMessageEvent.Message.Sender.Identity.Color },
+                        { "message", pinnedMessageEvent.Message.Content },
+                        { "emoteCount", emotes.Count },
+                        { "emotes", string.Join(",", emotesList) },
+                        { "messageStripped", messageStripped },
+                        { "messageCheermotesStripped", messageStripped },
+                        { "isHighlight", false },
+                        { "bits", 0 },
+                        { "isReply", pinnedMessageEvent.Message.IsReply },
+
+                        { "fromKick", true }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred when reading pinned message data : {ex.Message}");
+            }
+        }
+
+        private void Kick_OnMessageUnpinned()
+        {
+            try
+            {
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.MessageUnpinned,
+                    Arguments = new Dictionary<string, object>() {
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred when reading unpinned message data : {ex.Message}");
             }
         }
 
@@ -823,6 +904,8 @@ namespace Kick.Bot
             public const string StreamEnded = "kickStreamEnded";
             public const string Raid = "kickIncomingRaid";
             public const string TitleChanged = "kickTitleChanged";
+            public const string MessagePinned = "kickMessagePinned";
+            public const string MessageUnpinned = "kickMessageUnpinned";
         }
 
         internal class BotEvent

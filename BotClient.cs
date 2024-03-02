@@ -27,6 +27,7 @@ using System.Drawing.Imaging;
 using Microsoft.Toolkit.Uwp.Notifications;
 using System.Linq;
 using LiteDB;
+using System.Text.RegularExpressions;
 
 namespace Kick.Bot
 {
@@ -45,6 +46,9 @@ namespace Kick.Bot
 
             CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new string[] { "Kick", "Commands" });
             CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommand, new string[] { "Kick", "Commands" });
+
+            CPH.RegisterCustomTrigger("[Kick] Message Pinned", BotEventListener.BotEventType.MessagePinned, new string[] { "Kick", "Chat" });
+            CPH.RegisterCustomTrigger("[Kick] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new string[] { "Kick", "Chat" });
 
             CPH.RegisterCustomTrigger("[Kick] Follow", BotEventListener.BotEventType.Follow, new string[] { "Kick", "Channel" });
 
@@ -758,6 +762,12 @@ namespace Kick.Bot
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
 
+                if(args.TryGetValue("channel", out var customChannel))
+                {
+                    var userInfos = Client.GetChannelUserInfos(channel.Slug, customChannel).Result;
+                    channel = Client.GetChannelInfos(userInfos.Slug).Result;
+                }
+
                 int count = 20;
                 if (args.TryGetValue("count", out var rawCount))
                 {
@@ -770,7 +780,7 @@ namespace Kick.Bot
                     orderBy = rawOrderBy;
                 }
 
-                string timeRange = "date";
+                string timeRange = "all";
                 if (args.TryGetValue("timeRange", out var rawTimeRange))
                 {
                     timeRange = rawTimeRange;
@@ -828,6 +838,60 @@ namespace Kick.Bot
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to unpin a message : {ex}");
+            }
+        }
+
+        public void GetPinnedMessage(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                var pinnedMessage = Client.GetPinnedMessage(channel).Result;
+
+                var emoteRE = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
+                var messageStripped = emoteRE.Replace(pinnedMessage.Message.Content, "");
+                var emotes = emoteRE.Matches(pinnedMessage.Message.Content);
+                List<string> emotesList = new List<string>();
+                for (int i = 0; i < emotes.Count; ++i)
+                {
+                    emotesList.Add(emotes[i].Value);
+                }
+
+                int role = 1;
+                if (pinnedMessage.Message.Sender.IsVIP)
+                    role = 2;
+                if (pinnedMessage.Message.Sender.IsModerator)
+                    role = 3;
+                if (pinnedMessage.Message.Sender.IsBroadcaster)
+                    role = 4;
+
+                CPH.SetArgument("user", pinnedMessage.Message.Sender.Username);
+                CPH.SetArgument("userName", pinnedMessage.Message.Sender.Slug);
+                CPH.SetArgument("userId", pinnedMessage.Message.Sender.Id);
+                CPH.SetArgument("userType", "kick");
+                CPH.SetArgument("isSubscribed", pinnedMessage.Message.Sender.IsSubscriber);
+                CPH.SetArgument("isModerator", pinnedMessage.Message.Sender.IsModerator);
+                CPH.SetArgument("isVip", pinnedMessage.Message.Sender.IsVIP);
+                
+                CPH.SetArgument("msgId", pinnedMessage.Message.Id);
+                CPH.SetArgument("chatroomId", pinnedMessage.Message.ChatroomId);
+                CPH.SetArgument("role", role);
+                CPH.SetArgument("color", pinnedMessage.Message.Sender.Identity.Color);
+                CPH.SetArgument("message", pinnedMessage.Message.Content);
+                CPH.SetArgument("emoteCount", emotes.Count);
+                CPH.SetArgument("emotes", string.Join(",", emotesList));
+                CPH.SetArgument("messageStripped", messageStripped);
+                CPH.SetArgument("messageCheermotesStripped", messageStripped);
+                CPH.SetArgument("isHighlight", false);
+                CPH.SetArgument("bits", 0);
+                CPH.SetArgument("isAction", false);
+                CPH.SetArgument("isReply", pinnedMessage.Message.IsReply);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to fetch pinned message : {ex}");
             }
         }
     }
