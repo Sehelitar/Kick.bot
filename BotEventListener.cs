@@ -827,8 +827,7 @@ namespace Kick.Bot
                         { "isSubscribed", pinnedMessageEvent.Message.Sender.IsSubscriber },
                         { "isModerator", pinnedMessageEvent.Message.Sender.IsModerator },
                         { "isVip", pinnedMessageEvent.Message.Sender.IsVIP },
-                        { "eventSource", "kick" },
-
+                        
                         { "msgId", pinnedMessageEvent.Message.Id },
                         { "chatroomId", pinnedMessageEvent.Message.ChatroomId },
                         { "role", role },
