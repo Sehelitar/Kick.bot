@@ -955,6 +955,12 @@ namespace Kick.Bot
                     userInfos = Client.GetChannelUserInfos(channel.Slug, username).Result;
                 }
 
+                if(!userInfos.FollowingSince.HasValue)
+                {
+                    // No follow date => Do nothing
+                    return;
+                }
+
                 var timeDiff = DateTime.Now - userInfos.FollowingSince;
                 string timeLong = "", timeShort = "";
 
