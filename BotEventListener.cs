@@ -778,8 +778,8 @@ namespace Kick.Bot
                 {
                     ActionId = BotEventType.Raid,
                     Arguments = new Dictionary<string, object>() {
-                        { "user", raidEvent.Host },
-                        { "viewers", raidEvent.ViewersCount },
+                        { "user", raidEvent.Host.User.Username },
+                        { "viewers", raidEvent.Host.ViewersCount },
 
                         { "eventSource", "kick" },
                         { "fromKick", true }

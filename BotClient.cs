@@ -28,6 +28,8 @@ using Microsoft.Toolkit.Uwp.Notifications;
 using System.Linq;
 using LiteDB;
 using System.Text.RegularExpressions;
+using System.Text;
+using System.Runtime.Remoting;
 
 namespace Kick.Bot
 {
@@ -219,7 +221,6 @@ namespace Kick.Bot
                 if(username.StartsWith("@"))
                     username = username.Substring(1);
 
-
                 Channel channelInfos = null;
                 ChannelUser userInfos = null;
 
@@ -234,6 +235,12 @@ namespace Kick.Bot
                     channelInfos = Client.GetChannelInfos(userInfos.Slug).Result;
                 }
 
+                var dbCollection = Database.GetCollection<UserActivity>("users");
+                var activityQuery = from activityObject in dbCollection.Query()
+                                    where activityObject.UserId == userInfos.Id
+                                    select activityObject;
+                var extraUser = activityQuery.FirstOrDefault();
+
                 CPH.SetArgument("targetUser", channelInfos.User.Username);
                 CPH.SetArgument("targetUserName", channelInfos.Slug);
                 CPH.SetArgument("targetUserId", channelInfos.User.Id);
@@ -246,8 +253,8 @@ namespace Kick.Bot
                 CPH.SetArgument("targetIsAffiliate", channelInfos.IsAffiliate);
                 CPH.SetArgument("targetIsPartner", channelInfos.IsVerified);
                 CPH.SetArgument("targetFollowers", channelInfos.FollowersCount);
-                CPH.SetArgument("targetLastActive", DateTime.Now);
-                CPH.SetArgument("targetPreviousActive", DateTime.Now);
+                CPH.SetArgument("targetLastActive", extraUser != null ? extraUser.LastActivity : DateTime.Now);
+                CPH.SetArgument("targetPreviousActive", extraUser != null ? extraUser.LastActivity : DateTime.Now);
                 CPH.SetArgument("targetIsSubscribed", userInfos.IsSubscriber);
                 CPH.SetArgument("targetSubscriptionTier", (userInfos.IsSubscriber && userInfos.SubscribedFor > 0 ? 1000 : 0));
                 CPH.SetArgument("targetIsModerator", userInfos.IsModerator);
@@ -256,7 +263,7 @@ namespace Kick.Bot
                 CPH.SetArgument("targetChannelTitle", channelInfos.LiveStream?.SessionTitle ?? String.Empty);
                 CPH.SetArgument("game", channelInfos.LiveStream?.Categories.First()?.Name);
                 CPH.SetArgument("gameId", channelInfos.LiveStream?.Categories.First()?.Id);
-                CPH.SetArgument("createdAt", DateTime.Now);
+                CPH.SetArgument("createdAt", channelInfos.Chatroom.CreatedAt);
                 CPH.SetArgument("accountAge", Convert.ToInt64((DateTime.Now - channelInfos.Chatroom.CreatedAt).TotalSeconds));
                 CPH.SetArgument("tagCount", 0);
                 CPH.SetArgument("tags", new List<string>());
@@ -892,6 +899,154 @@ namespace Kick.Bot
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to fetch pinned message : {ex}");
+            }
+        }
+
+        public void GetUserStats(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                string username;
+                bool isSlug = false;
+
+                {
+                    if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != String.Empty)
+                    {
+                        username = Convert.ToString(userName);
+                        isSlug = true;
+                    }
+                    else if (args.TryGetValue("targetUser", out var user) && user != null && user != String.Empty)
+                    {
+                        username = Convert.ToString(user);
+                        isSlug = false;
+                    }
+                    else if (args.TryGetValue("userName", out userName) && userName != null && userName != String.Empty)
+                    {
+                        username = Convert.ToString(userName);
+                        isSlug = true;
+                    }
+                    else if (args.TryGetValue("user", out user) && user != null && user != String.Empty)
+                    {
+                        username = Convert.ToString(user);
+                        isSlug = false;
+                    }
+                    else
+                    {
+                        username = channel.Slug;
+                        isSlug = true;
+                    }
+                }
+
+                if (username.StartsWith("@"))
+                    username = username.Substring(1);
+
+                ChannelUser userInfos = null;
+
+                if (isSlug)
+                {
+                    Channel channelInfos = Client.GetChannelInfos(username).Result;
+                    userInfos = Client.GetChannelUserInfos(channel.Slug, channelInfos.User.Username).Result;
+                }
+                else
+                {
+                    userInfos = Client.GetChannelUserInfos(channel.Slug, username).Result;
+                }
+
+                var timeDiff = DateTime.Now - userInfos.FollowingSince;
+                string timeLong = "", timeShort = "";
+
+                if(timeDiff.HasValue)
+                {
+                    StringBuilder tlong = new StringBuilder();
+                    StringBuilder tshort = new StringBuilder();
+
+                    var days = timeDiff.Value.Days;
+
+                    var totalYears = days / 365.25;
+                    if (totalYears > 0) {
+                        var nYears = Convert.ToInt32(Math.Floor(totalYears));
+                        tlong.Append(nYears + " year" + (nYears > 1 ? "s" : "") + ", ");
+                        tshort.Append(nYears + "y, ");
+
+                        days -= Convert.ToInt32(Math.Floor(nYears * 365.25));
+                    }
+
+                    var totalMonths = timeDiff.Value.TotalDays / 30.4375;
+                    if (totalMonths > 0)
+                    {
+                        var nMonths = Convert.ToInt32(Math.Floor(totalMonths));
+                        tlong.Append(nMonths + " month" + (nMonths > 1 ? "s" : "") + ", ");
+                        tshort.Append(nMonths + "m, ");
+
+                        days -= Convert.ToInt32(Math.Floor(nMonths * 30.4375));
+                    }
+
+                    timeLong = tlong
+                        .Append(days    + " day"    + (days > 1    ? "s, " : ", "))
+                        .Append(timeDiff.Value.Hours   + " hour"   + (timeDiff.Value.Hours > 1   ? "s, " : ", "))
+                        .Append(timeDiff.Value.Minutes + " minute" + (timeDiff.Value.Minutes > 1 ? "s" : ""))
+                        .ToString();
+
+                    timeShort = tshort
+                        .Append(days + "d, ")
+                        .Append(timeDiff.Value.Hours   + "h, ")
+                        .Append(timeDiff.Value.Minutes + "m")
+                        .ToString();
+                }
+
+                CPH.SetArgument("followDate", userInfos.FollowingSince);
+                CPH.SetArgument("followAgeLong", timeLong);
+                CPH.SetArgument("followAgeShort", timeShort);
+                CPH.SetArgument("followAgeDays", timeDiff.HasValue ? Convert.ToInt32(Math.Floor(timeDiff.Value.TotalDays)) : 0);
+                CPH.SetArgument("followAgeMinutes", timeDiff.HasValue ? Convert.ToInt32(Math.Floor(timeDiff.Value.TotalMinutes)) : 0);
+                CPH.SetArgument("followAgeSeconds", timeDiff.HasValue ? Convert.ToInt32(Math.Floor(timeDiff.Value.TotalSeconds)) : 0);
+                CPH.SetArgument("followUser", userInfos.Username);
+                CPH.SetArgument("followUserName", userInfos.Slug);
+                CPH.SetArgument("followUserId", userInfos.Id);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to fetch follower infos : {ex}");
+            }
+        }
+
+        public void PickRandomActiveUser(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                var interval = 600;
+                if (args.TryGetValue("interval", out var intervalValue))
+                {
+                    interval = Convert.ToInt32(intervalValue);
+                }
+
+                var now = DateTime.Now;
+                var dbCollection = Database.GetCollection<UserActivity>("users");
+                var activityQuery = from activityObject in dbCollection.Query()
+                                    where activityObject.LastActivity.HasValue &&
+                                        (now - activityObject.LastActivity).Value.TotalSeconds <= interval
+                                    select activityObject;
+
+                if (activityQuery.Count() > 0)
+                {
+                    var pickId = new Random().Next(0, activityQuery.Count());
+                    var pickedUser = activityQuery.Offset(pickId).FirstOrDefault();
+
+                    if (pickedUser != null)
+                    {
+                        GetKickChannelInfos(args, channel, pickedUser.Username);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to fetch a random active user : {ex}");
             }
         }
     }
