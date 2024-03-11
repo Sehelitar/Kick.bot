@@ -249,14 +249,31 @@ namespace Kick.Bot
                 if (bannedUserEvent.Channel.Id != Channel.Id)
                     return;
 
-                if (!bannedUserEvent.IsBanned)
-                {
-                    CPH.LogDebug($"[Kick] Unban de {bannedUserEvent.Banned.Username}");
-                    return;
-                }
-
                 UpdateActivityDB(bannedUserEvent.User);
                 UpdateActivityDB(bannedUserEvent.Banned);
+
+                if (!bannedUserEvent.IsBanned)
+                {
+                    CPH.LogDebug($"[Kick] Unban :: {bannedUserEvent.Banned.Username}");
+
+                    SendToQueue(new BotEvent()
+                    {
+                        ActionId = BotEventType.UserUnbanned,
+                        Arguments = new Dictionary<string, object>() {
+                            { "user", bannedUserEvent.Banned.Username },
+                            { "userName", bannedUserEvent.Banned.Slug },
+                            { "userId", bannedUserEvent.Banned.Id },
+                            { "userType", "kick" },
+                            { "deletedById", bannedUserEvent.User.Id },
+                            { "deletedByUsername", bannedUserEvent.User.Slug },
+                            { "deletedByDisplayName", bannedUserEvent.User.Username },
+                            { "eventSource", "kick" },
+                            { "fromKick", true }
+                        }
+                    });
+
+                    return;
+                }
 
                 if (bannedUserEvent.Ban.BannedUntil != null && bannedUserEvent.Ban.BannedUntil.HasValue)
                 {
@@ -894,6 +911,7 @@ namespace Kick.Bot
             public const string SubGifts = "kickGifts";
             public const string Timeout = "kickTO";
             public const string UserBanned = "kickBan";
+            public const string UserUnbanned = "kickUnban";
             public const string PollCreated = "kickPollCreated";
             public const string PollUpdated = "kickPollUpdated";
             public const string PollCompleted = "kickPollCompleted";

@@ -61,6 +61,7 @@ namespace Kick.Bot
             CPH.RegisterCustomTrigger("[Kick] Chat Message Deleted", BotEventListener.BotEventType.MessageDeleted, new string[] { "Kick", "Moderation" });
             CPH.RegisterCustomTrigger("[Kick] Timeout", BotEventListener.BotEventType.Timeout, new string[] { "Kick", "Moderation" });
             CPH.RegisterCustomTrigger("[Kick] User Ban", BotEventListener.BotEventType.UserBanned, new string[] { "Kick", "Moderation" });
+            CPH.RegisterCustomTrigger("[Kick] User Unban", BotEventListener.BotEventType.UserUnbanned, new string[] { "Kick", "Moderation" });
 
             CPH.RegisterCustomTrigger("[Kick] Poll Created", BotEventListener.BotEventType.PollCreated, new string[] { "Kick", "Polls" });
             CPH.RegisterCustomTrigger("[Kick] Poll Updated", BotEventListener.BotEventType.PollUpdated, new string[] { "Kick", "Polls" });
@@ -808,6 +809,27 @@ namespace Kick.Bot
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+            }
+        }
+
+        public void GetClipMP4URL(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                if (!args.TryGetValue("clipId", out var clipId))
+                {
+                    return;
+                }
+
+                var clipUrl = Client.GetClipMP4URL(clipId).Result;
+                CPH.SetArgument($"clipLink", clipUrl);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to fetch clip URL : {ex}");
             }
         }
 

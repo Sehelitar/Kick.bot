@@ -291,6 +291,19 @@ public class CPHInline
         }
     }
 
+    public bool GetClipMP4URL()
+    {
+        try
+        {
+            Client.GetClipMP4URL(args, Listener.Channel);
+            return true;
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
+    }
+
     public bool ChatEmotesOnly() {
     	try
     	{
