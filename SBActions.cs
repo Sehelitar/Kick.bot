@@ -425,4 +425,17 @@ public class CPHInline
             return false;
         }
     }
+
+    public bool GetChannelCounters()
+    {
+        try
+        {
+            Client.GetChannelCounters(args, Listener.Channel);
+            return true;
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
+    }
 }

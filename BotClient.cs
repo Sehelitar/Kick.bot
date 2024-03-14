@@ -1077,5 +1077,24 @@ namespace Kick.Bot
                 CPH.LogDebug($"[Kick] An error occurred while trying to fetch a random active user : {ex}");
             }
         }
+
+        public void GetChannelCounters(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                var channelInfos = Client.GetChannelInfos(channel.Slug).Result;
+
+                CPH.SetArgument("followerCount", channelInfos.FollowersCount);
+                if(channelInfos.LiveStream != null)
+                    CPH.SetArgument("viewerCount", channelInfos.LiveStream.ViewerCount);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
+            }
+        }
     }
 }
