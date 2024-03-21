@@ -327,11 +327,14 @@ namespace Kick.Bot
 
         public void Dispose()
         {
+            var tx = Database.BeginTrans();
             var dbCollection = Database.GetCollection<CommandCounter>(Persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
             dbCollection.Upsert(this);
             dbCollection.EnsureIndex("ByCommand", x => x.CommandId, false);
             dbCollection.EnsureIndex("ByUser", x => x.UserId, false);
             dbCollection.EnsureIndex("ByKey", BsonExpression.Create("{Command:$.CommandId,User:$.UserId}"), true);
+            if (tx)
+                Database.Commit();
         }
 
         public static CommandCounter GlobalCounterForCommand(string commandId, bool persist = true)

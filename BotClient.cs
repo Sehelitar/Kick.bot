@@ -87,7 +87,6 @@ namespace Kick.Bot
         {
             CPH.LogDebug("[Kick] Extension is shuting down");
             Database.Checkpoint();
-            Database = null;
         }
 
         public async Task Authenticate()

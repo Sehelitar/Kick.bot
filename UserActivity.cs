@@ -40,9 +40,20 @@ namespace Kick.Bot
 
         public void Dispose()
         {
-            var dbCollection = BotClient.Database.GetCollection<UserActivity>("users");
-            dbCollection.Upsert(this);
-            dbCollection.EnsureIndex("ByUserId", x => x.UserId, true);
+            try
+            {
+                var tx = BotClient.Database.BeginTrans();
+                var dbCollection = BotClient.Database.GetCollection<UserActivity>("users");
+                dbCollection.Upsert(this);
+                dbCollection.EnsureIndex("ByUserId", x => x.UserId, true);
+                if (tx)
+                    BotClient.Database.Commit();
+            }
+            catch (Exception)
+            {
+                BotClient.Database = null;
+                BotClient.Database = new LiteDatabase(@"data\kick-ext.db");
+            }
         }
 
         public static UserActivity ForUser(long userId)

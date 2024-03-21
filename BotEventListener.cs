@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Kick.Models.Events;
 using Kick.Models.API;
+using System.Linq;
 
 namespace Kick.Bot
 {
@@ -32,6 +33,7 @@ namespace Kick.Bot
         public Channel Channel;
 
         private readonly List<long> Followers = new List<long>();
+        private readonly Queue<ChatMessageEvent> messagesHistory = new Queue<ChatMessageEvent>(300);
 
         internal BotEventListener(KickEventListener listener, Channel channel)
         {
@@ -61,8 +63,6 @@ namespace Kick.Bot
             StreamerBotAppSettings.Load();
         }
 
-        
-
         ~BotEventListener() {
             _ = EventListener.LeaveAsync(Channel);
         }
@@ -78,6 +78,10 @@ namespace Kick.Bot
             {
                 if (message.ChatroomId != Channel.Chatroom.Id)
                     return;
+
+                if (messagesHistory.Count >= 300)
+                    messagesHistory.Dequeue();
+                messagesHistory.Enqueue(message);
 
                 CPH.LogVerbose($"[Kick] Chat :: {message.Sender.Username} : {message.Content}");
                 var isCommand = false;
@@ -182,14 +186,50 @@ namespace Kick.Bot
         {
             try
             {
+                Dictionary<string, object> arguments = null;
+                var deletedMessage = (from msg in messagesHistory where msg.Id == message.Message.Id select msg).FirstOrDefault();
+                if(deletedMessage == null)
+                {
+                    arguments = new Dictionary<string, object>() {
+                        { "msgId", message.Message.Id },
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    };
+                }
+                else
+                {
+                    int role = 1;
+                    if (deletedMessage.Sender.IsVIP)
+                        role = 2;
+                    if (deletedMessage.Sender.IsModerator)
+                        role = 3;
+                    if (deletedMessage.Sender.IsBroadcaster)
+                        role = 4;
+
+                    arguments = new Dictionary<string, object>() {
+                        { "eventSource", "kick" },
+                        { "fromKick", true },
+
+                        { "user", deletedMessage.Sender.Username },
+                        { "userName", deletedMessage.Sender.Slug },
+                        { "userId", deletedMessage.Sender.Id },
+                        { "userType", "kick" },
+                        { "isSubscribed", deletedMessage.Sender.IsSubscriber },
+                        { "isModerator", deletedMessage.Sender.IsModerator },
+                        { "isVip", deletedMessage.Sender.IsVIP },
+
+                        { "msgId", deletedMessage.Id },
+                        { "chatroomId", deletedMessage.ChatroomId },
+                        { "role", role },
+                        { "color", deletedMessage.Sender.Identity.Color },
+                        { "message", deletedMessage.Content }
+                    };
+                }
+
                 SendToQueue(new BotEvent()
                 {
                     ActionId = BotEventType.MessageDeleted,
-                    Arguments = new Dictionary<string, object>() {
-                        { "message", message.Id },
-                        { "eventSource", "kick" },
-                        { "fromKick", true }
-                    }
+                    Arguments = arguments
                 });
             }
             catch (Exception ex)
