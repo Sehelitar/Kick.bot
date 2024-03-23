@@ -329,35 +329,32 @@ namespace Kick.Bot
         {
             try
             {
-                var tx = Database.BeginTrans();
-                try
+                using (var database = new LiteDatabase(@"data\kick-ext.db"))
                 {
-                    var dbCollection = Database.GetCollection<CommandCounter>(Persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+                    var dbCollection = database.GetCollection<CommandCounter>(Persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
                     dbCollection.Upsert(this);
                     dbCollection.EnsureIndex("ByCommand", x => x.CommandId, false);
                     dbCollection.EnsureIndex("ByUser", x => x.UserId, false);
                     dbCollection.EnsureIndex("ByKey", BsonExpression.Create("{Command:$.CommandId,User:$.UserId}"), true);
-                    if (tx)
-                        Database.Commit();
-                }
-                catch (Exception)
-                {
-                    if(tx)
-                        Database.Rollback();
                 }
             }
-            catch (Exception) { }
+            catch (Exception) {}
         }
 
         public static CommandCounter GlobalCounterForCommand(string commandId, bool persist = true)
         {
             try
             {
-                var dbCollection = Database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
-                var counterQuery = from counterObject in dbCollection.Query() where counterObject.CommandId == commandId && counterObject.UserId == null select counterObject;
-                var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, Persist = persist };
-                result.Persist = persist;
-                return result;
+                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                {
+                    var dbCollection = database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+                    var counterQuery = from counterObject in dbCollection.Query()
+                                       where counterObject.CommandId == commandId &&counterObject.UserId == null
+                                       select counterObject;
+                    var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, Persist = persist };
+                    result.Persist = persist;
+                    return result;
+                }
             }
             catch (Exception)
             {
@@ -371,11 +368,16 @@ namespace Kick.Bot
         {
             try
             {
-                var dbCollection = Database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
-                var counterQuery = from counterObject in dbCollection.Query() where counterObject.CommandId == commandId && counterObject.UserId == userId select counterObject;
-                var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, UserId = userId, Persist = persist };
-                result.Persist = persist;
-                return result;
+                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                {
+                    var dbCollection = database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+                    var counterQuery = from counterObject in dbCollection.Query()
+                                       where counterObject.CommandId == commandId && counterObject.UserId == userId
+                                       select counterObject;
+                    var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, UserId = userId, Persist = persist };
+                    result.Persist = persist;
+                    return result;
+                }
             }
             catch (Exception)
             {
@@ -389,7 +391,10 @@ namespace Kick.Bot
         {
             try
             {
-                Database?.DropCollection(VolatileCollection);
+                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                {
+                    database.DropCollection(VolatileCollection);
+                }
             }
             catch (Exception) { }
         }

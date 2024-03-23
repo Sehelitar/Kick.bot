@@ -41,23 +41,18 @@ namespace Kick.Bot
 
         public void Dispose()
         {
-            if (BotClient.Database == null)
-            {
-                return;
-            }
-
             try
             {
-                var tx = BotClient.Database.BeginTrans();
-                var dbCollection = BotClient.Database.GetCollection<UserActivity>("users");
-                dbCollection.Upsert(this);
-                dbCollection.EnsureIndex("ByUserId", x => x.UserId, true);
-                if (tx)
-                    BotClient.Database.Commit();
+                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                {
+                    var dbCollection = database.GetCollection<UserActivity>("users");
+                    dbCollection.Upsert(this);
+                    dbCollection.EnsureIndex("ByUserId", x => x.UserId, true);
+                }
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                BotClient.Database = null;
+                BotClient.CPH.LogError($"[Kick] A database error occured (UserActivity.Dispose) : {e}");
             }
         }
 
@@ -65,26 +60,16 @@ namespace Kick.Bot
         {
             try
             {
-                if (BotClient.Database == null)
+                using (var database = new LiteDatabase(@"data\kick-ext.db"))
                 {
-                    BotClient.Database = new LiteDatabase(@"data\kick-ext.db");
+                    var dbCollection = database.GetCollection<UserActivity>("users");
+                    var activityQuery = from activityObject in dbCollection.Query() where activityObject.UserId == userId select activityObject;
+                    return activityQuery.FirstOrDefault() ?? new UserActivity();
                 }
             }
             catch (Exception e)
             {
-                BotClient.CPH.LogError($"[Kick] A database error occured (lUserActivity.ForUser#1) : {e}");
-                return new UserActivity();
-            }
-            try
-            {
-                var dbCollection = BotClient.Database.GetCollection<UserActivity>("users");
-                var activityQuery = from activityObject in dbCollection.Query() where activityObject.UserId == userId select activityObject;
-                return activityQuery.FirstOrDefault() ?? new UserActivity();
-            }
-            catch (Exception e)
-            {
-                BotClient.Database = null;
-                BotClient.CPH.LogError($"[Kick] A database error occured (lUserActivity.ForUser#2) : {e}");
+                BotClient.CPH.LogError($"[Kick] A database error occured (UserActivity.ForUser) : {e}");
                 return new UserActivity();
             }
         }

@@ -37,8 +37,6 @@ namespace Kick.Bot
     {
         public static IInlineInvokeProxy CPH;
 
-        internal static LiteDatabase Database;
-
         internal KickClient Client { get; private set; }
 
         public User AuthenticatedUser { get; private set; }
@@ -79,14 +77,12 @@ namespace Kick.Bot
 
             CPH.LogDebug("[Kick] Extension loaded. Starting...");
             Client = new KickClient();
-            Database = new LiteDatabase(@"data\kick-ext.db");
             CommandCounter.PruneVolatile();
         }
 
         ~BotClient()
         {
             CPH.LogDebug("[Kick] Extension is shuting down");
-            Database?.Checkpoint();
         }
 
         public async Task Authenticate()
@@ -238,12 +234,16 @@ namespace Kick.Bot
                 UserActivity extraUser = null;
                 try
                 {
-                    var dbCollection = Database.GetCollection<UserActivity>("users");
-                    var activityQuery = from activityObject in dbCollection.Query()
-                                        where activityObject.UserId == userInfos.Id
-                                        select activityObject;
-                    extraUser = activityQuery.FirstOrDefault();
-                } catch (Exception e)
+                    using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                    {
+                        var dbCollection = database.GetCollection<UserActivity>("users");
+                        var activityQuery = from activityObject in dbCollection.Query()
+                                            where activityObject.UserId == userInfos.Id
+                                            select activityObject;
+                        extraUser = activityQuery.FirstOrDefault();
+                    }
+                }
+                catch (Exception e)
                 {
                     CPH.LogError($"[Kick] A database error occured (l:GetKickChannelInfos) : {e}");
                 }
@@ -1060,21 +1060,24 @@ namespace Kick.Bot
                     interval = Convert.ToInt32(intervalValue);
                 }
 
-                var now = DateTime.Now;
-                var dbCollection = Database.GetCollection<UserActivity>("users");
-                var activityQuery = from activityObject in dbCollection.Query()
-                                    where activityObject.LastActivity.HasValue &&
-                                        (now - activityObject.LastActivity).Value.TotalSeconds <= interval
-                                    select activityObject;
-
-                if (activityQuery.Count() > 0)
+                using (var database = new LiteDatabase(@"data\kick-ext.db"))
                 {
-                    var pickId = new Random().Next(0, activityQuery.Count());
-                    var pickedUser = activityQuery.Offset(pickId).FirstOrDefault();
+                    var now = DateTime.Now;
+                    var dbCollection = database.GetCollection<UserActivity>("users");
+                    var activityQuery = from activityObject in dbCollection.Query()
+                                        where activityObject.LastActivity.HasValue &&
+                                            (now - activityObject.LastActivity).Value.TotalSeconds <= interval
+                                        select activityObject;
 
-                    if (pickedUser != null)
+                    if (activityQuery.Count() > 0)
                     {
-                        GetKickChannelInfos(args, channel, pickedUser.Username);
+                        var pickId = new Random().Next(0, activityQuery.Count());
+                        var pickedUser = activityQuery.Offset(pickId).FirstOrDefault();
+
+                        if (pickedUser != null)
+                        {
+                            GetKickChannelInfos(args, channel, pickedUser.Username);
+                        }
                     }
                 }
             }
