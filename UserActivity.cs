@@ -16,6 +16,7 @@
  */
 
 using LiteDB;
+using Streamer.bot.Plugin.Interface;
 using System;
 
 namespace Kick.Bot
@@ -40,6 +41,11 @@ namespace Kick.Bot
 
         public void Dispose()
         {
+            if (BotClient.Database == null)
+            {
+                return;
+            }
+
             try
             {
                 var tx = BotClient.Database.BeginTrans();
@@ -52,15 +58,35 @@ namespace Kick.Bot
             catch (Exception)
             {
                 BotClient.Database = null;
-                BotClient.Database = new LiteDatabase(@"data\kick-ext.db");
             }
         }
 
         public static UserActivity ForUser(long userId)
         {
-            var dbCollection = BotClient.Database.GetCollection<UserActivity>("users");
-            var activityQuery = from activityObject in dbCollection.Query() where activityObject.UserId == userId select activityObject;
-            return activityQuery.FirstOrDefault() ?? new UserActivity();
+            try
+            {
+                if (BotClient.Database == null)
+                {
+                    BotClient.Database = new LiteDatabase(@"data\kick-ext.db");
+                }
+            }
+            catch (Exception e)
+            {
+                BotClient.CPH.LogError($"[Kick] A database error occured (lUserActivity.ForUser#1) : {e}");
+                return new UserActivity();
+            }
+            try
+            {
+                var dbCollection = BotClient.Database.GetCollection<UserActivity>("users");
+                var activityQuery = from activityObject in dbCollection.Query() where activityObject.UserId == userId select activityObject;
+                return activityQuery.FirstOrDefault() ?? new UserActivity();
+            }
+            catch (Exception e)
+            {
+                BotClient.Database = null;
+                BotClient.CPH.LogError($"[Kick] A database error occured (lUserActivity.ForUser#2) : {e}");
+                return new UserActivity();
+            }
         }
     }
 }

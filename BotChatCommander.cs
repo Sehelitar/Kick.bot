@@ -327,37 +327,71 @@ namespace Kick.Bot
 
         public void Dispose()
         {
-            var tx = Database.BeginTrans();
-            var dbCollection = Database.GetCollection<CommandCounter>(Persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
-            dbCollection.Upsert(this);
-            dbCollection.EnsureIndex("ByCommand", x => x.CommandId, false);
-            dbCollection.EnsureIndex("ByUser", x => x.UserId, false);
-            dbCollection.EnsureIndex("ByKey", BsonExpression.Create("{Command:$.CommandId,User:$.UserId}"), true);
-            if (tx)
-                Database.Commit();
+            try
+            {
+                var tx = Database.BeginTrans();
+                try
+                {
+                    var dbCollection = Database.GetCollection<CommandCounter>(Persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+                    dbCollection.Upsert(this);
+                    dbCollection.EnsureIndex("ByCommand", x => x.CommandId, false);
+                    dbCollection.EnsureIndex("ByUser", x => x.UserId, false);
+                    dbCollection.EnsureIndex("ByKey", BsonExpression.Create("{Command:$.CommandId,User:$.UserId}"), true);
+                    if (tx)
+                        Database.Commit();
+                }
+                catch (Exception)
+                {
+                    if(tx)
+                        Database.Rollback();
+                }
+            }
+            catch (Exception) { }
         }
 
         public static CommandCounter GlobalCounterForCommand(string commandId, bool persist = true)
         {
-            var dbCollection = Database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
-            var counterQuery = from counterObject in dbCollection.Query() where counterObject.CommandId == commandId && counterObject.UserId == null select counterObject;
-            var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, Persist = persist };
-            result.Persist = persist;
-            return result;
+            try
+            {
+                var dbCollection = Database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+                var counterQuery = from counterObject in dbCollection.Query() where counterObject.CommandId == commandId && counterObject.UserId == null select counterObject;
+                var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, Persist = persist };
+                result.Persist = persist;
+                return result;
+            }
+            catch (Exception)
+            {
+                var result = new CommandCounter() { CommandId = commandId, Persist = persist };
+                result.Persist = persist;
+                return result;
+            }
         }
 
         public static CommandCounter CounterForCommandUser(string commandId, long userId, bool persist = true)
         {
-            var dbCollection = Database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
-            var counterQuery = from counterObject in dbCollection.Query() where counterObject.CommandId == commandId && counterObject.UserId == userId select counterObject;
-            var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, UserId = userId, Persist = persist };
-            result.Persist = persist;
-            return result;
+            try
+            {
+                var dbCollection = Database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
+                var counterQuery = from counterObject in dbCollection.Query() where counterObject.CommandId == commandId && counterObject.UserId == userId select counterObject;
+                var result = counterQuery.FirstOrDefault() ?? new CommandCounter() { CommandId = commandId, UserId = userId, Persist = persist };
+                result.Persist = persist;
+                return result;
+            }
+            catch (Exception)
+            {
+                var result = new CommandCounter() { CommandId = commandId, UserId = userId, Persist = persist };
+                result.Persist = persist;
+                return result;
+            }
         }
 
         public static void PruneVolatile()
         {
-            Database.DropCollection(VolatileCollection);
+            try
+            {
+                Database?.DropCollection(VolatileCollection);
+            }
+            catch (Exception) { }
         }
     }
 }

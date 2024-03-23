@@ -186,6 +186,20 @@ namespace Kick.Bot
         {
             try
             {
+                // Chat cleared
+                if(message.Message == null)
+                {
+                    SendToQueue(new BotEvent()
+                    {
+                        ActionId = BotEventType.MessageDeleted,
+                        Arguments = new Dictionary<string, object>() {
+                            { "eventSource", "kick" },
+                            { "fromKick", true }
+                        }
+                    });
+                    return;
+                }
+
                 Dictionary<string, object> arguments = null;
                 var deletedMessage = (from msg in messagesHistory where msg.Id == message.Message.Id select msg).FirstOrDefault();
                 if(deletedMessage == null)

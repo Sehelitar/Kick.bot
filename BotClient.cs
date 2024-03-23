@@ -86,7 +86,7 @@ namespace Kick.Bot
         ~BotClient()
         {
             CPH.LogDebug("[Kick] Extension is shuting down");
-            Database.Checkpoint();
+            Database?.Checkpoint();
         }
 
         public async Task Authenticate()
@@ -235,11 +235,18 @@ namespace Kick.Bot
                     channelInfos = Client.GetChannelInfos(userInfos.Slug).Result;
                 }
 
-                var dbCollection = Database.GetCollection<UserActivity>("users");
-                var activityQuery = from activityObject in dbCollection.Query()
-                                    where activityObject.UserId == userInfos.Id
-                                    select activityObject;
-                var extraUser = activityQuery.FirstOrDefault();
+                UserActivity extraUser = null;
+                try
+                {
+                    var dbCollection = Database.GetCollection<UserActivity>("users");
+                    var activityQuery = from activityObject in dbCollection.Query()
+                                        where activityObject.UserId == userInfos.Id
+                                        select activityObject;
+                    extraUser = activityQuery.FirstOrDefault();
+                } catch (Exception e)
+                {
+                    CPH.LogError($"[Kick] A database error occured (l:GetKickChannelInfos) : {e}");
+                }
 
                 CPH.SetArgument("targetUser", channelInfos.User.Username);
                 CPH.SetArgument("targetUserName", channelInfos.Slug);
