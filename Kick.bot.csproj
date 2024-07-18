@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net4.7.2</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
-    <Version>0.4.0.0</Version>
+    <Version>0.4.1.0</Version>
     <Authors>Sehelitar</Authors>
     <Description>Kick Streaming integration for Streamer.bot</Description>
     <Copyright>Sehelitar ©2023</Copyright>
@@ -23,8 +23,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="BotConfig.cs" />
     <Compile Remove="BotEventSimulation.cs" />
     <Compile Remove="SBActions.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="BotConfig.resx" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +37,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="BotConfig.cs" />
+    <None Include="BotConfig.resx" />
     <None Include="BotEventSimulation.cs" />
   </ItemGroup>
 

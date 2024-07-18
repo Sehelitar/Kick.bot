@@ -141,6 +141,31 @@ namespace Kick.Bot
             }
         }
 
+        public void DeleteMessage(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+
+                if (args.TryGetValue("chatroomId", out var chatroomId))
+                    chatroomId = Convert.ToInt64(chatroomId);
+                else if (channel != null)
+                    chatroomId = channel.Chatroom.Id;
+                else
+                    throw new Exception("missing argument, chatroomId required");
+
+                if (!args.TryGetValue("msgId", out var msgId))
+                    throw new Exception("missing argument, msgId required");
+
+                Client.DeleteMessage(chatroomId, msgId);
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while deleting a message from chatroom : {ex}");
+            }
+        }
+
         public void SendReply(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
@@ -248,14 +273,16 @@ namespace Kick.Bot
                     CPH.LogError($"[Kick] A database error occured (l:GetKickChannelInfos) : {e}");
                 }
 
+                var profilePic = channelInfos.User.ProfilePic ?? "https://dbxmjjzl5pc1g.cloudfront.net/49e68df9-6ede-4a97-b593-340a400cb57b/images/user-profile-pic.png";
+
                 CPH.SetArgument("targetUser", channelInfos.User.Username);
                 CPH.SetArgument("targetUserName", channelInfos.Slug);
                 CPH.SetArgument("targetUserId", channelInfos.User.Id);
                 CPH.SetArgument("targetDescription", channelInfos.User.Bio);
                 CPH.SetArgument("targetDescriptionEscaped", WebUtility.UrlEncode(channelInfos.User.Bio));
-                CPH.SetArgument("targetUserProfileImageUrl", channelInfos.User.ProfilePic);
-                CPH.SetArgument("targetUserProfileImageUrlEscaped", WebUtility.UrlEncode(channelInfos.User.ProfilePic));
-                CPH.SetArgument("targetUserProfileImageEscaped", WebUtility.UrlEncode(channelInfos.User.ProfilePic));
+                CPH.SetArgument("targetUserProfileImageUrl", profilePic);
+                CPH.SetArgument("targetUserProfileImageUrlEscaped", WebUtility.UrlEncode(profilePic));
+                CPH.SetArgument("targetUserProfileImageEscaped", WebUtility.UrlEncode(profilePic));
                 CPH.SetArgument("targetUserType", channelInfos.IsVerified ? "partner" : (channelInfos.IsAffiliate ? "affiliate" : String.Empty));
                 CPH.SetArgument("targetIsAffiliate", channelInfos.IsAffiliate);
                 CPH.SetArgument("targetIsPartner", channelInfos.IsVerified);
@@ -275,9 +302,17 @@ namespace Kick.Bot
                 CPH.SetArgument("tagCount", 0);
                 CPH.SetArgument("tags", new List<string>());
                 CPH.SetArgument("tagsDelimited", String.Empty);
+                CPH.SetArgument("targetIsLive", false);
 
                 if (channelInfos.LiveStream != null)
                 {
+                    CPH.SetArgument("targetIsLive", true);
+                    CPH.SetArgument("targetLiveThumbnail", channelInfos.LiveStream.Thumbnail.Url);
+                    CPH.SetArgument("targetLiveViewers", channelInfos.LiveStream.Viewers);
+                    CPH.SetArgument("targetLiveStartedAt", channelInfos.LiveStream.StartDate);
+                    CPH.SetArgument("targetLiveDuration", Convert.ToInt64((DateTime.Now - channelInfos.LiveStream.StartDate).TotalSeconds));
+                    CPH.SetArgument("targetLiveMature", channelInfos.LiveStream.IsMature);
+
                     CPH.SetArgument("tagCount", channelInfos.LiveStream.Tags.Count);
                     CPH.SetArgument("tags", channelInfos.LiveStream.Tags);
                     int tagId = 0;
