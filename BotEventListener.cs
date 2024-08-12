@@ -174,10 +174,10 @@ namespace Kick.Bot
                 if (message.IsReply)
                 {
                     var replyArgs = new Dictionary<string, object>() {
-                        { "reply.msg.id", message.Metadata?.OriginalMessage?.Id },
-                        { "reply.msg.content", message.Metadata?.OriginalMessage?.Content },
-                        { "reply.sender.id", message.Metadata?.OriginalSender?.Id },
-                        { "reply.sender.username", message.Metadata?.OriginalSender?.Username },
+                        { "reply.msgId", message.Metadata?.OriginalMessage?.Id },
+                        { "reply.message", message.Metadata?.OriginalMessage?.Content },
+                        { "reply.userId", message.Metadata?.OriginalSender?.Id },
+                        { "reply.userName", message.Metadata?.OriginalSender?.Username },
                     };
                     args = args.Concat(replyArgs).ToDictionary(k => k.Key, v => v.Value);
                 }
