@@ -139,39 +139,53 @@ namespace Kick.Bot
                 if (message.Sender.IsBroadcaster)
                     role = 4;
 
+                var args = new Dictionary<string, object>() {
+                    { "user", message.Sender.Username },
+                    { "userName", message.Sender.Slug },
+                    { "userId", message.Sender.Id },
+                    { "userType", "kick" },
+                    { "isSubscribed", message.Sender.IsSubscriber },
+                    { "isModerator", message.Sender.IsModerator },
+                    { "isVip", message.Sender.IsVIP },
+                    { "eventSource", "kick" },
+
+                    { "msgId", message.Id },
+                    { "chatroomId", message.ChatroomId },
+                    { "role", role },
+                    { "color", message.Sender.Identity.Color },
+                    { "message", message.Content },
+                    { "emoteCount", emotes.Count },
+                    { "emotes", string.Join(",", emotesList) },
+                    { "messageStripped", messageStripped },
+                    { "messageCheermotesStripped", messageStripped },
+                    { "isHighlight", false },
+                    { "bits", 0 },
+                    { "isAction", false },
+                    { "firstMessage", firstMessage },
+
+                    { "isReply", message.IsReply },
+
+                    { "pinnableMessage", Newtonsoft.Json.JsonConvert.SerializeObject(message) },
+
+                    { "isCommand", isCommand },
+                    { "fromKick", true }
+                };
+
+                if (message.IsReply)
+                {
+                    var replyArgs = new Dictionary<string, object>() {
+                        { "reply.msg.id", message.Metadata?.OriginalMessage?.Id },
+                        { "reply.msg.content", message.Metadata?.OriginalMessage?.Content },
+                        { "reply.sender.id", message.Metadata?.OriginalSender?.Id },
+                        { "reply.sender.username", message.Metadata?.OriginalSender?.Username },
+                    };
+                    args = args.Concat(replyArgs).ToDictionary(k => k.Key, v => v.Value);
+                }
+
                 SendToQueue(new BotEvent()
                 {
                     ActionId = BotEventType.Message,
-                    Arguments = new Dictionary<string, object>() {
-                        { "user", message.Sender.Username },
-                        { "userName", message.Sender.Slug },
-                        { "userId", message.Sender.Id },
-                        { "userType", "kick" },
-                        { "isSubscribed", message.Sender.IsSubscriber },
-                        { "isModerator", message.Sender.IsModerator },
-                        { "isVip", message.Sender.IsVIP },
-                        { "eventSource", "kick" },
-
-                        { "msgId", message.Id },
-                        { "chatroomId", message.ChatroomId },
-                        { "role", role },
-                        { "color", message.Sender.Identity.Color },
-                        { "message", message.Content },
-                        { "emoteCount", emotes.Count },
-                        { "emotes", string.Join(",", emotesList) },
-                        { "messageStripped", messageStripped },
-                        { "messageCheermotesStripped", messageStripped },
-                        { "isHighlight", false },
-                        { "bits", 0 },
-                        { "isAction", false },
-                        { "isReply", message.IsReply },
-                        { "firstMessage", firstMessage },
-
-                        { "pinnableMessage", Newtonsoft.Json.JsonConvert.SerializeObject(message) },
-
-                        { "isCommand", isCommand },
-                        { "fromKick", true }
-                    }
+                    Arguments = args
                 });
 
                 BotTimedActionManager.MessageReceived();
