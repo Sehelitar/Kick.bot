@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net4.7.2</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
-    <Version>0.6.0.0</Version>
+    <Version>0.6.1.0</Version>
     <Authors>Sehelitar</Authors>
     <Description>Kick Streaming integration for Streamer.bot</Description>
     <Copyright>Sehelitar ©2023</Copyright>
@@ -43,7 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="LiteDB" Version="5.0.20" />
+    <PackageReference Include="LiteDB" Version="5.0.21" />
   </ItemGroup>
 
   <ItemGroup>
