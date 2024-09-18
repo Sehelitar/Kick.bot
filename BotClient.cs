@@ -45,7 +45,7 @@ namespace Kick.Bot
             CPH.RegisterCustomTrigger("[Kick] Chat Message", BotEventListener.BotEventType.Message, new string[] { "Kick", "Chat" });
 
             CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new string[] { "Kick", "Commands" });
-            CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommand, new string[] { "Kick", "Commands" });
+            CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new string[] { "Kick", "Commands" });
 
             CPH.RegisterCustomTrigger("[Kick] Message Pinned", BotEventListener.BotEventType.MessagePinned, new string[] { "Kick", "Chat" });
             CPH.RegisterCustomTrigger("[Kick] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new string[] { "Kick", "Chat" });
