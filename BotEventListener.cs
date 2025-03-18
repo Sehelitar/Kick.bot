@@ -25,49 +25,49 @@ using System.Linq;
 
 namespace Kick.Bot
 {
-    public sealed partial class BotEventListener
+    public sealed class BotEventListener
     {
-        internal static IInlineInvokeProxy CPH { get { return BotClient.CPH; } }
+        internal static IInlineInvokeProxy CPH => BotClient.CPH;
 
-        private readonly KickEventListener EventListener = null;
+        private readonly KickEventListener _eventListener = null;
         public Channel Channel;
 
-        private readonly List<long> Followers = new List<long>();
-        private readonly Queue<ChatMessageEvent> messagesHistory = new Queue<ChatMessageEvent>(300);
+        private readonly List<long> _followers = new List<long>();
+        private readonly Queue<ChatMessageEvent> _messagesHistory = new Queue<ChatMessageEvent>(300);
 
         internal BotEventListener(KickEventListener listener, Channel channel)
         {
-            EventListener = listener;
+            _eventListener = listener;
             Channel = channel;
 
-            EventListener.OnViewerFollow += Kick_OnViewerFollow;
-            EventListener.OnChatMessage += Kick_OnChatMessage;
-            EventListener.OnChatMessageDeleted += Kick_OnChatMessageDeleted;
-            EventListener.OnSubscription += Kick_OnSubscription;
-            EventListener.OnSubGift += Kick_OnSubGift;
-            EventListener.OnUserBanned += Kick_OnUserBanned;
-            EventListener.OnChatUpdated += Kick_OnChatUpdated;
-            EventListener.OnPollCreated += Kick_OnPollCreated;
-            EventListener.OnPollUpdated += Kick_OnPollUpdated;
-            EventListener.OnPollCompleted += Kick_OnPollCompleted;
-            EventListener.OnPollCancelled += Kick_OnPollCancelled;
-            EventListener.OnStreamStarted += Kick_OnStreamStarted;
-            EventListener.OnStreamEnded += Kick_OnStreamEnded;
-            EventListener.OnStreamUpdated += Kick_OnStreamUpdated;
-            EventListener.OnRaid += Kick_OnRaid;
-            EventListener.OnMessagePinned += Kick_OnMessagePinned;
-            EventListener.OnMessageUnpinned += Kick_OnMessageUnpinned;
+            _eventListener.OnViewerFollow += Kick_OnViewerFollow;
+            _eventListener.OnChatMessage += Kick_OnChatMessage;
+            _eventListener.OnChatMessageDeleted += Kick_OnChatMessageDeleted;
+            _eventListener.OnSubscription += Kick_OnSubscription;
+            _eventListener.OnSubGift += Kick_OnSubGift;
+            _eventListener.OnUserBanned += Kick_OnUserBanned;
+            _eventListener.OnChatUpdated += Kick_OnChatUpdated;
+            _eventListener.OnPollCreated += Kick_OnPollCreated;
+            _eventListener.OnPollUpdated += Kick_OnPollUpdated;
+            _eventListener.OnPollCompleted += Kick_OnPollCompleted;
+            _eventListener.OnPollCancelled += Kick_OnPollCancelled;
+            _eventListener.OnStreamStarted += Kick_OnStreamStarted;
+            _eventListener.OnStreamEnded += Kick_OnStreamEnded;
+            _eventListener.OnStreamUpdated += Kick_OnStreamUpdated;
+            _eventListener.OnRaid += Kick_OnRaid;
+            _eventListener.OnMessagePinned += Kick_OnMessagePinned;
+            _eventListener.OnMessageUnpinned += Kick_OnMessageUnpinned;
 
-            EventListener.JoinAsync(Channel).Wait();
+            _eventListener.JoinAsync(Channel).Wait();
 
             StreamerBotAppSettings.Load();
         }
 
         ~BotEventListener() {
-            _ = EventListener.LeaveAsync(Channel);
+            _ = _eventListener.LeaveAsync(Channel);
         }
 
-        private void SendToQueue(BotEvent botEvent)
+        private static void SendToQueue(BotEvent botEvent)
         {
             CPH.TriggerCodeEvent(botEvent.ActionId, botEvent.Arguments);
         }
@@ -79,9 +79,9 @@ namespace Kick.Bot
                 if (message.ChatroomId != Channel.Chatroom.Id)
                     return;
 
-                if (messagesHistory.Count >= 300)
-                    messagesHistory.Dequeue();
-                messagesHistory.Enqueue(message);
+                if (_messagesHistory.Count >= 300)
+                    _messagesHistory.Dequeue();
+                _messagesHistory.Enqueue(message);
 
                 CPH.LogVerbose($"[Kick] Chat :: {message.Sender.Username} : {message.Content}");
                 var isCommand = false;
@@ -95,7 +95,7 @@ namespace Kick.Bot
                     activity.Username = message.Sender.Username;
                     activity.Slug = message.Sender.Slug;
                     activity.IsOG = message.Sender.IsOG;
-                    activity.IsVip = message.Sender.IsVIP;
+                    activity.IsVip = message.Sender.IsVip;
                     activity.IsModerator = message.Sender.IsModerator;
                     activity.IsSubscriber = message.Sender.IsSubscriber;
                     if (activity.IsFollower)
@@ -132,7 +132,7 @@ namespace Kick.Bot
                 }
 
                 int role = 1;
-                if (message.Sender.IsVIP)
+                if (message.Sender.IsVip)
                     role = 2;
                 if (message.Sender.IsModerator)
                     role = 3;
@@ -146,7 +146,7 @@ namespace Kick.Bot
                     { "userType", "kick" },
                     { "isSubscribed", message.Sender.IsSubscriber },
                     { "isModerator", message.Sender.IsModerator },
-                    { "isVip", message.Sender.IsVIP },
+                    { "isVip", message.Sender.IsVip },
                     { "eventSource", "kick" },
 
                     { "msgId", message.Id },
@@ -215,7 +215,7 @@ namespace Kick.Bot
                 }
 
                 Dictionary<string, object> arguments = null;
-                var deletedMessage = (from msg in messagesHistory where msg.Id == message.Message.Id select msg).FirstOrDefault();
+                var deletedMessage = (from msg in _messagesHistory where msg.Id == message.Message.Id select msg).FirstOrDefault();
                 if(deletedMessage == null)
                 {
                     arguments = new Dictionary<string, object>() {
@@ -227,7 +227,7 @@ namespace Kick.Bot
                 else
                 {
                     int role = 1;
-                    if (deletedMessage.Sender.IsVIP)
+                    if (deletedMessage.Sender.IsVip)
                         role = 2;
                     if (deletedMessage.Sender.IsModerator)
                         role = 3;
@@ -244,7 +244,7 @@ namespace Kick.Bot
                         { "userType", "kick" },
                         { "isSubscribed", deletedMessage.Sender.IsSubscriber },
                         { "isModerator", deletedMessage.Sender.IsModerator },
-                        { "isVip", deletedMessage.Sender.IsVIP },
+                        { "isVip", deletedMessage.Sender.IsVip },
 
                         { "msgId", deletedMessage.Id },
                         { "chatroomId", deletedMessage.ChatroomId },
@@ -281,12 +281,12 @@ namespace Kick.Bot
                     activity.FollowerSince = activity.FollowerSince ?? DateTime.Now;
                 }
 
-                if (Followers.Contains(followEvent.User.Id))
+                if (_followers.Contains(followEvent.User.Id))
                 {
                     // On a déjà reçu un event de follow pour cet utilisateur !
                     return;
                 }
-                Followers.Add(followEvent.User.Id);
+                _followers.Add(followEvent.User.Id);
 
                 SendToQueue(new BotEvent()
                 {
@@ -753,7 +753,7 @@ namespace Kick.Bot
                 if (kickEvent.Livestream.Channel.Id != Channel.Id)
                     return;
 
-                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+                Channel = _eventListener.Client.GetChannelInfos(Channel.Slug).Result;
 
                 SendToQueue(new BotEvent()
                 {
@@ -779,7 +779,7 @@ namespace Kick.Bot
                 if (livestreamEvent.Livestream.ChannelId != Channel.Id)
                     return;
 
-                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+                Channel = _eventListener.Client.GetChannelInfos(Channel.Slug).Result;
 
                 var args = new Dictionary<string, object>() {
                     { "startedAt", DateTime.Now },
@@ -836,7 +836,7 @@ namespace Kick.Bot
                     { "fromKick", true }
                 };
 
-                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+                Channel = _eventListener.Client.GetChannelInfos(Channel.Slug).Result;
 
                 SendToQueue(new BotEvent()
                 {
@@ -894,7 +894,7 @@ namespace Kick.Bot
                 }
 
                 int role = 1;
-                if (pinnedMessageEvent.Message.Sender.IsVIP)
+                if (pinnedMessageEvent.Message.Sender.IsVip)
                     role = 2;
                 if (pinnedMessageEvent.Message.Sender.IsModerator)
                     role = 3;
@@ -911,7 +911,7 @@ namespace Kick.Bot
                         { "userType", "kick" },
                         { "isSubscribed", pinnedMessageEvent.Message.Sender.IsSubscriber },
                         { "isModerator", pinnedMessageEvent.Message.Sender.IsModerator },
-                        { "isVip", pinnedMessageEvent.Message.Sender.IsVIP },
+                        { "isVip", pinnedMessageEvent.Message.Sender.IsVip },
                         
                         { "msgId", pinnedMessageEvent.Message.Id },
                         { "chatroomId", pinnedMessageEvent.Message.ChatroomId },

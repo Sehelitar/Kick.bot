@@ -36,53 +36,64 @@ namespace Kick.Bot
     public sealed class BotClient
     {
         public static IInlineInvokeProxy CPH;
+        
+        private static PluginUi _pluginUi;
 
-        internal KickClient Client { get; private set; }
+        private KickClient Client { get; }
+        private KickClient AltClient { get; }
 
         public User AuthenticatedUser { get; private set; }
 
         public BotClient() {
-            CPH.RegisterCustomTrigger("[Kick] Chat Message", BotEventListener.BotEventType.Message, new string[] { "Kick", "Chat" });
+            CPH.RegisterCustomTrigger("[Kick] Chat Message", BotEventListener.BotEventType.Message, new[] { "Kick", "Chat" });
 
-            CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new string[] { "Kick", "Commands" });
-            CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new string[] { "Kick", "Commands" });
+            CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new[] { "Kick", "Commands" });
+            CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands" });
 
-            CPH.RegisterCustomTrigger("[Kick] Message Pinned", BotEventListener.BotEventType.MessagePinned, new string[] { "Kick", "Chat" });
-            CPH.RegisterCustomTrigger("[Kick] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new string[] { "Kick", "Chat" });
+            CPH.RegisterCustomTrigger("[Kick] Message Pinned", BotEventListener.BotEventType.MessagePinned, new[] { "Kick", "Chat" });
+            CPH.RegisterCustomTrigger("[Kick] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new[] { "Kick", "Chat" });
 
-            CPH.RegisterCustomTrigger("[Kick] Follow", BotEventListener.BotEventType.Follow, new string[] { "Kick", "Channel" });
+            CPH.RegisterCustomTrigger("[Kick] Follow", BotEventListener.BotEventType.Follow, new[] { "Kick", "Channel" });
 
-            CPH.RegisterCustomTrigger("[Kick] Subscription", BotEventListener.BotEventType.Subscription, new string[] { "Kick", "Subscriptions" });
-            CPH.RegisterCustomTrigger("[Kick] Sub Gift (x1)", BotEventListener.BotEventType.SubGift, new string[] { "Kick", "Subscriptions" });
-            CPH.RegisterCustomTrigger("[Kick] Sub Gifts (multiple)", BotEventListener.BotEventType.SubGifts, new string[] { "Kick", "Subscriptions" });
+            CPH.RegisterCustomTrigger("[Kick] Subscription", BotEventListener.BotEventType.Subscription, new[] { "Kick", "Subscriptions" });
+            CPH.RegisterCustomTrigger("[Kick] Sub Gift (x1)", BotEventListener.BotEventType.SubGift, new[] { "Kick", "Subscriptions" });
+            CPH.RegisterCustomTrigger("[Kick] Sub Gifts (multiple)", BotEventListener.BotEventType.SubGifts, new[] { "Kick", "Subscriptions" });
 
-            CPH.RegisterCustomTrigger("[Kick] Chat Message Deleted", BotEventListener.BotEventType.MessageDeleted, new string[] { "Kick", "Moderation" });
-            CPH.RegisterCustomTrigger("[Kick] Timeout", BotEventListener.BotEventType.Timeout, new string[] { "Kick", "Moderation" });
-            CPH.RegisterCustomTrigger("[Kick] User Ban", BotEventListener.BotEventType.UserBanned, new string[] { "Kick", "Moderation" });
-            CPH.RegisterCustomTrigger("[Kick] User Unban", BotEventListener.BotEventType.UserUnbanned, new string[] { "Kick", "Moderation" });
+            CPH.RegisterCustomTrigger("[Kick] Chat Message Deleted", BotEventListener.BotEventType.MessageDeleted, new[] { "Kick", "Moderation" });
+            CPH.RegisterCustomTrigger("[Kick] Timeout", BotEventListener.BotEventType.Timeout, new[] { "Kick", "Moderation" });
+            CPH.RegisterCustomTrigger("[Kick] User Ban", BotEventListener.BotEventType.UserBanned, new[] { "Kick", "Moderation" });
+            CPH.RegisterCustomTrigger("[Kick] User Unban", BotEventListener.BotEventType.UserUnbanned, new[] { "Kick", "Moderation" });
 
-            CPH.RegisterCustomTrigger("[Kick] Poll Created", BotEventListener.BotEventType.PollCreated, new string[] { "Kick", "Polls" });
-            CPH.RegisterCustomTrigger("[Kick] Poll Updated", BotEventListener.BotEventType.PollUpdated, new string[] { "Kick", "Polls" });
-            CPH.RegisterCustomTrigger("[Kick] Poll Completed", BotEventListener.BotEventType.PollCompleted, new string[] { "Kick", "Polls" });
-            CPH.RegisterCustomTrigger("[Kick] Poll Cancelled", BotEventListener.BotEventType.PollCancelled, new string[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick] Poll Created", BotEventListener.BotEventType.PollCreated, new[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick] Poll Updated", BotEventListener.BotEventType.PollUpdated, new[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick] Poll Completed", BotEventListener.BotEventType.PollCompleted, new[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick] Poll Cancelled", BotEventListener.BotEventType.PollCancelled, new[] { "Kick", "Polls" });
 
-            CPH.RegisterCustomTrigger("[Kick] Stream Started", BotEventListener.BotEventType.StreamStarted, new string[] { "Kick", "Stream" });
-            CPH.RegisterCustomTrigger("[Kick] Stream Ended", BotEventListener.BotEventType.StreamEnded, new string[] { "Kick", "Stream" });
-            CPH.RegisterCustomTrigger("[Kick] Title/Category Changed", BotEventListener.BotEventType.TitleChanged, new string[] { "Kick", "Stream" });
+            CPH.RegisterCustomTrigger("[Kick] Stream Started", BotEventListener.BotEventType.StreamStarted, new[] { "Kick", "Stream" });
+            CPH.RegisterCustomTrigger("[Kick] Stream Ended", BotEventListener.BotEventType.StreamEnded, new[] { "Kick", "Stream" });
+            CPH.RegisterCustomTrigger("[Kick] Title/Category Changed", BotEventListener.BotEventType.TitleChanged, new[] { "Kick", "Stream" });
 
-            CPH.RegisterCustomTrigger("[Kick] Raid", BotEventListener.BotEventType.Raid, new string[] { "Kick" });
+            CPH.RegisterCustomTrigger("[Kick] Raid", BotEventListener.BotEventType.Raid, new[] { "Kick" });
 
             var target = Path.GetTempPath() + "KickLogo.png";
             Properties.Resources.KickLogo.Save(target, ImageFormat.Png);
 
             CPH.LogDebug("[Kick] Extension loaded. Starting...");
             Client = new KickClient();
+            AltClient = new KickClient("KickBotProfile");
             CommandCounter.PruneVolatile();
         }
 
         ~BotClient()
         {
             CPH.LogDebug("[Kick] Extension is shuting down");
+        }
+
+        public void OpenConfig()
+        {
+            if (_pluginUi == null)
+                _pluginUi = new PluginUi(Client, AltClient);
+            _pluginUi.OpenConfig();
         }
 
         public async Task Authenticate()
@@ -179,11 +190,7 @@ namespace Kick.Bot
                     chatroomId = channel.Chatroom.Id;
                 else
                     throw new Exception("missing argument, chatroomId required");
-                string message = String.Empty;
-                if (args.TryGetValue("rawInput", out var rawInput))
-                    message = Convert.ToString(rawInput);
-                else
-                    message = args["message"];
+                var message = args.TryGetValue("rawInput", out var rawInput) ? (string)Convert.ToString(rawInput) : (string)args["message"];
                 Client.SendReplyToChatroom(
                     chatroomId,
                     Convert.ToString(args["reply"]),
@@ -292,7 +299,7 @@ namespace Kick.Bot
                 CPH.SetArgument("targetIsSubscribed", userInfos.IsSubscriber);
                 CPH.SetArgument("targetSubscriptionTier", (userInfos.IsSubscriber && userInfos.SubscribedFor > 0 ? 1000 : 0));
                 CPH.SetArgument("targetIsModerator", userInfos.IsModerator);
-                CPH.SetArgument("targetIsVip", userInfos.IsVIP);
+                CPH.SetArgument("targetIsVip", userInfos.IsVip);
                 CPH.SetArgument("targetIsFollowing", userInfos.IsFollowing);
                 CPH.SetArgument("targetChannelTitle", channelInfos.LiveStream?.SessionTitle ?? String.Empty);
                 CPH.SetArgument("game", channelInfos.LiveStream?.Categories.First()?.Name);
@@ -315,12 +322,11 @@ namespace Kick.Bot
 
                     CPH.SetArgument("tagCount", channelInfos.LiveStream.Tags.Count);
                     CPH.SetArgument("tags", channelInfos.LiveStream.Tags);
-                    int tagId = 0;
+                    var tagId = 0;
                     channelInfos.LiveStream.Tags.ForEach((tag) => {
                         CPH.SetArgument("tag" + (tagId++), tag);
                     });
-                    CPH.SetArgument("tagsDelimited", String.Join(", ", channelInfos.LiveStream.Tags.ToArray()));
-                    ;
+                    CPH.SetArgument("tagsDelimited", string.Join(", ", channelInfos.LiveStream.Tags.ToArray()));
                 }
                 else if (channelInfos.PreviousLiveStreams.Count > 0)
                 {
@@ -635,6 +641,7 @@ namespace Kick.Bot
                 var startTime = maxDuration - duration;
 
                 // Update channel infos to have fresh livestream data
+                if (channel == null) return;
                 channel = Client.GetChannelInfos(channel.Slug).Result;
                 try
                 {
@@ -664,8 +671,11 @@ namespace Kick.Bot
 
                 if (!args.TryGetValue("enable", out var enable))
                 {
-                    channel = Client.GetChannelInfos(channel.Slug).Result;
-                    enable = !channel.Chatroom.IsEmotesOnly;
+                    if (channel != null)
+                    {
+                        channel = Client.GetChannelInfos(channel.Slug).Result;
+                        enable = !channel.Chatroom.IsEmotesOnly;
+                    }
                 }
 
                 ChatUpdatedEvent updated = Client.SetChannelChatroomEmotesOnly(channel, enable).Result;
@@ -694,8 +704,11 @@ namespace Kick.Bot
 
                 if (!args.TryGetValue("enable", out var enable))
                 {
-                    channel = Client.GetChannelInfos(channel.Slug).Result;
-                    enable = !channel.Chatroom.IsSubOnly;
+                    if (channel != null)
+                    {
+                        channel = Client.GetChannelInfos(channel.Slug).Result;
+                        enable = !channel.Chatroom.IsSubOnly;
+                    }
                 }
 
                 ChatUpdatedEvent updated = Client.SetChannelChatroomSubscribersOnly(channel, enable).Result;
@@ -865,7 +878,7 @@ namespace Kick.Bot
                     return;
                 }
 
-                var clipUrl = Client.GetClipMP4URL(clipId).Result;
+                var clipUrl = Client.GetClipMp4Url(clipId).Result;
                 CPH.SetArgument($"clipLink", clipUrl);
             }
             catch (Exception ex)
@@ -920,17 +933,17 @@ namespace Kick.Bot
 
                 var pinnedMessage = Client.GetPinnedMessage(channel).Result;
 
-                var emoteRE = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
-                var messageStripped = emoteRE.Replace(pinnedMessage.Message.Content, "");
-                var emotes = emoteRE.Matches(pinnedMessage.Message.Content);
-                List<string> emotesList = new List<string>();
-                for (int i = 0; i < emotes.Count; ++i)
+                var emoteRe = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
+                var messageStripped = emoteRe.Replace(pinnedMessage.Message.Content, "");
+                var emotes = emoteRe.Matches(pinnedMessage.Message.Content);
+                var emotesList = new List<string>();
+                for (var i = 0; i < emotes.Count; ++i)
                 {
                     emotesList.Add(emotes[i].Value);
                 }
 
-                int role = 1;
-                if (pinnedMessage.Message.Sender.IsVIP)
+                var role = 1;
+                if (pinnedMessage.Message.Sender.IsVip)
                     role = 2;
                 if (pinnedMessage.Message.Sender.IsModerator)
                     role = 3;
@@ -943,7 +956,7 @@ namespace Kick.Bot
                 CPH.SetArgument("userType", "kick");
                 CPH.SetArgument("isSubscribed", pinnedMessage.Message.Sender.IsSubscriber);
                 CPH.SetArgument("isModerator", pinnedMessage.Message.Sender.IsModerator);
-                CPH.SetArgument("isVip", pinnedMessage.Message.Sender.IsVIP);
+                CPH.SetArgument("isVip", pinnedMessage.Message.Sender.IsVip);
                 
                 CPH.SetArgument("msgId", pinnedMessage.Message.Id);
                 CPH.SetArgument("chatroomId", pinnedMessage.Message.ChatroomId);
@@ -973,28 +986,26 @@ namespace Kick.Bot
                     throw new Exception("authentication required");
 
                 string username;
-                bool isSlug = false;
+                var isSlug = false;
 
                 {
-                    if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != String.Empty)
+                    if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != string.Empty)
                     {
                         username = Convert.ToString(userName);
                         isSlug = true;
                     }
-                    else if (args.TryGetValue("targetUser", out var user) && user != null && user != String.Empty)
+                    else if (args.TryGetValue("targetUser", out var user) && user != null && user != string.Empty)
                     {
                         username = Convert.ToString(user);
-                        isSlug = false;
                     }
-                    else if (args.TryGetValue("userName", out userName) && userName != null && userName != String.Empty)
+                    else if (args.TryGetValue("userName", out userName) && userName != null && userName != string.Empty)
                     {
                         username = Convert.ToString(userName);
                         isSlug = true;
                     }
-                    else if (args.TryGetValue("user", out user) && user != null && user != String.Empty)
+                    else if (args.TryGetValue("user", out user) && user != null && user != string.Empty)
                     {
                         username = Convert.ToString(user);
-                        isSlug = false;
                     }
                     else
                     {
@@ -1006,11 +1017,11 @@ namespace Kick.Bot
                 if (username.StartsWith("@"))
                     username = username.Substring(1);
 
-                ChannelUser userInfos = null;
+                ChannelUser userInfos;
 
                 if (isSlug)
                 {
-                    Channel channelInfos = Client.GetChannelInfos(username).Result;
+                    var channelInfos = Client.GetChannelInfos(username).Result;
                     userInfos = Client.GetChannelUserInfos(channel.Slug, channelInfos.User.Username).Result;
                 }
                 else

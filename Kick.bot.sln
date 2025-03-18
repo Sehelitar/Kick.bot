@@ -5,8 +5,6 @@ VisualStudioVersion = 17.7.34009.444
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kick.bot", "Kick.bot.csproj", "{F29724FD-3D85-4C93-8B6F-F42CEBD92543}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kick", "KickAPI\Kick.csproj", "{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,14 +21,6 @@ Global
 		{F29724FD-3D85-4C93-8B6F-F42CEBD92543}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F29724FD-3D85-4C93-8B6F-F42CEBD92543}.Release|x64.ActiveCfg = Release|x64
 		{F29724FD-3D85-4C93-8B6F-F42CEBD92543}.Release|x64.Build.0 = Release|x64
-		{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}.Debug|x64.ActiveCfg = Debug|x64
-		{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}.Debug|x64.Build.0 = Debug|x64
-		{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}.Release|x64.ActiveCfg = Release|x64
-		{CD08AA50-C620-4CE9-ACBD-D27F34E6D4B1}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

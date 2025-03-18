@@ -27,19 +27,19 @@ namespace Kick.Bot
 {
     internal static class BotChatCommander
     {
-        private static List<BotChatCommand> commands = new List<BotChatCommand>();
+        private static List<BotChatCommand> _commands = new List<BotChatCommand>();
 
         public static void ReloadCommands()
         {
             CPH.LogVerbose($"[Kick] Commands reloaded.");
 
-            var oldCommands = commands;
+            var oldCommands = _commands;
             var newCommands = new List<BotChatCommand>();
 
-            foreach(StreamerBotCommand botCommand in StreamerBotAppSettings.Commands)
+            foreach(var botCommand in StreamerBotAppSettings.Commands)
             {
                 var oldMatchRequest = from oldCommand in oldCommands where oldCommand.CommandInfo.Id == botCommand.Id select oldCommand;
-                if (oldMatchRequest.Count() > 0)
+                if (oldMatchRequest.Any())
                 {
                     var oldChatCommand = oldMatchRequest.First();
                     oldChatCommand.CommandInfo = botCommand;
@@ -62,8 +62,8 @@ namespace Kick.Bot
                 CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} [Cooldown] ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommandCooldown.{botCommand.Id}", new string[] { "Kick", "Commands" });
             }
 
-            commands = newCommands;
-            CPH.LogVerbose($"[Kick] {commands.Count} commands loaded");
+            _commands = newCommands;
+            CPH.LogVerbose($"[Kick] {_commands.Count} commands loaded");
         }
 
 
@@ -71,14 +71,14 @@ namespace Kick.Bot
         {
             var isCommand = false;
 
-            foreach (BotChatCommand botCommand in commands)
+            foreach (var botCommand in _commands)
             {
                 if (!botCommand.CommandInfo.Enabled)
                     continue;
 
                 /* Vérification de la commande saisie */
 
-                bool textCommandMatch = false;
+                var textCommandMatch = false;
                 string inputCommand = null;
                 string[] inputStrings = null;
 
@@ -89,42 +89,41 @@ namespace Kick.Bot
                         var textCommands = botCommand.CommandInfo.Command.Replace("\r\n", "\n").Split('\n');
                         foreach (var textCommand in textCommands)
                         {
-                            var command = textCommand;
                             // Si le texte de la commande est vide, on ignore
-                            if (command.Length < 2)
+                            if (textCommand.Length < 2)
                                 continue;
 
                             switch (botCommand.CommandInfo.Location)
                             {
                                 // Début de phrase
                                 case 0:
-                                    if (chatMessageEvent.Content.StartsWith(command, botCommand.CommandInfo.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
+                                    if (chatMessageEvent.Content.StartsWith(textCommand, botCommand.CommandInfo.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
                                     {
                                         textCommandMatch = true;
-                                        inputCommand = command;
-                                        inputStrings = chatMessageEvent.Content.Substring(command.Length).Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                                        inputCommand = textCommand;
+                                        inputStrings = chatMessageEvent.Content.Substring(textCommand.Length).Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                                     }
                                     break;
 
                                 // Correspondance exacte
                                 case 1:
-                                    if (String.Compare(chatMessageEvent.Content, command, botCommand.CommandInfo.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase) == 0)
+                                    if (String.Compare(chatMessageEvent.Content, textCommand, botCommand.CommandInfo.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase) == 0)
                                     {
                                         textCommandMatch = true;
                                         inputCommand = chatMessageEvent.Content.Trim();
-                                        inputStrings = chatMessageEvent.Content.Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                                        inputStrings = chatMessageEvent.Content.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                                     }
                                     break;
 
                                 // N'importe où dans la chaine
                                 case 2:
                                     if (botCommand.CommandInfo.CaseSensitive ?
-                                        chatMessageEvent.Content.Contains(command) :
-                                        chatMessageEvent.Content.ToLower().Contains(command.ToLower()))
+                                        chatMessageEvent.Content.Contains(textCommand) :
+                                        chatMessageEvent.Content.ToLower().Contains(textCommand.ToLower()))
                                     {
                                         textCommandMatch = true;
-                                        inputCommand = command.Trim();
-                                        inputStrings = chatMessageEvent.Content.Trim().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                                        inputCommand = textCommand.Trim();
+                                        inputStrings = chatMessageEvent.Content.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                                     }
                                     break;
                             }
@@ -150,7 +149,7 @@ namespace Kick.Bot
                 if (!textCommandMatch)
                     continue;
 
-                var rawInput = String.Join(" ", inputStrings);
+                var rawInput = string.Join(" ", inputStrings);
 
                 /* Vérification de la liste des accès */
 
@@ -159,7 +158,7 @@ namespace Kick.Bot
                 if (botCommand.CommandInfo.PermittedGroups.Count > 0)
                 {
                     var groupMatch = (botCommand.CommandInfo.PermittedGroups.Contains("Moderators") && chatMessageEvent.Sender.IsModerator) ||
-                        (botCommand.CommandInfo.PermittedGroups.Contains("VIPs") && chatMessageEvent.Sender.IsVIP) ||
+                        (botCommand.CommandInfo.PermittedGroups.Contains("VIPs") && chatMessageEvent.Sender.IsVip) ||
                         (botCommand.CommandInfo.PermittedGroups.Contains("Subscribers") && chatMessageEvent.Sender.IsSubscriber);
 
                     userPermitted = groupMatch ^ deniedCheck;
@@ -171,7 +170,7 @@ namespace Kick.Bot
                 // Si l'utilisateur n'est pas autorisé à utiliser cette commande, on passe à la suivante
                 if (!userPermitted)
                 {
-                    CPH.LogDebug($"[Kick] Command access denied. Caster={chatMessageEvent.Sender.IsBroadcaster} Mod={chatMessageEvent.Sender.IsModerator} VIP={chatMessageEvent.Sender.IsVIP} OG={chatMessageEvent.Sender.IsOG} Sub={chatMessageEvent.Sender.IsSubscriber}");
+                    CPH.LogDebug($"[Kick] Command access denied. Caster={chatMessageEvent.Sender.IsBroadcaster} Mod={chatMessageEvent.Sender.IsModerator} VIP={chatMessageEvent.Sender.IsVip} OG={chatMessageEvent.Sender.IsOG} Sub={chatMessageEvent.Sender.IsSubscriber}");
                     continue;
                 }
 
@@ -208,7 +207,7 @@ namespace Kick.Bot
                 }
 
                 int role = 1;
-                if (chatMessageEvent.Sender.IsVIP)
+                if (chatMessageEvent.Sender.IsVip)
                     role = 2;
                 if (chatMessageEvent.Sender.IsModerator)
                     role = 3;
@@ -230,7 +229,7 @@ namespace Kick.Bot
                         { "userType", "kick" },
                         { "isSubscribed", chatMessageEvent.Sender.IsSubscriber },
                         { "isModerator", chatMessageEvent.Sender.IsModerator },
-                        { "isVip", chatMessageEvent.Sender.IsVIP },
+                        { "isVip", chatMessageEvent.Sender.IsVip },
                         { "eventSource", "kick" },
 
                         { "cooldownLeft", Convert.ToInt64(Math.Max(globalRem, userRem)) },
@@ -277,7 +276,7 @@ namespace Kick.Bot
                     { "userType", "kick" },
                     { "isSubscribed", chatMessageEvent.Sender.IsSubscriber },
                     { "isModerator", chatMessageEvent.Sender.IsModerator },
-                    { "isVip", chatMessageEvent.Sender.IsVIP },
+                    { "isVip", chatMessageEvent.Sender.IsVip },
                     { "eventSource", "command" },
 
                     { "msgId", chatMessageEvent.Id },
@@ -308,8 +307,8 @@ namespace Kick.Bot
     internal class BotChatCommand
     {
         public StreamerBotCommand CommandInfo;
-        public DateTime? LastExec = null;
-        public Dictionary<long, DateTime> UsersLastExec = new Dictionary<long, DateTime>();
+        public DateTime? LastExec;
+        public readonly Dictionary<long, DateTime> UsersLastExec = new Dictionary<long, DateTime>();
     }
 
     internal class CommandCounter : IDisposable
@@ -319,9 +318,9 @@ namespace Kick.Bot
 
         [BsonId]
         public long Id { get; set; }
-        public string CommandId { get; set; } = null;
-        public long? UserId { get; set; } = null;
-        public long Counter { get; set; } = 0;
+        public string CommandId { get; set; }
+        public long? UserId { get; set; }
+        public long Counter { get; set; }
         [BsonIgnore]
         public bool Persist { get; set; } = true;
 
@@ -338,7 +337,10 @@ namespace Kick.Bot
                     dbCollection.EnsureIndex("ByKey", BsonExpression.Create("{Command:$.CommandId,User:$.UserId}"), true);
                 }
             }
-            catch (Exception) {}
+            catch (Exception)
+            {
+                // ignored
+            }
         }
 
         public static CommandCounter GlobalCounterForCommand(string commandId, bool persist = true)
@@ -396,7 +398,10 @@ namespace Kick.Bot
                     database.DropCollection(VolatileCollection);
                 }
             }
-            catch (Exception) { }
+            catch (Exception)
+            {
+                // ignored
+            }
         }
     }
 }

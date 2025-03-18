@@ -17,7 +17,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Timers;
 
 namespace Kick.Bot
@@ -25,35 +24,30 @@ namespace Kick.Bot
     internal static class BotTimedActionManager
     {
         public static readonly Random Random = new Random(481516234);
-        private static readonly List<BotTimedAction> actions = new List<BotTimedAction>();
-        private static readonly Timer ticker;
+        private static readonly List<BotTimedAction> Actions = new List<BotTimedAction>();
+        private static readonly Timer Ticker;
 
         static BotTimedActionManager() {
-            ticker = new Timer(200)
+            Ticker = new Timer(200)
             {
                 Enabled = true
             };
-            ticker.Elapsed += Ticker_Elapsed;
-            ticker.Start();
+            Ticker.Elapsed += Ticker_Elapsed;
+            Ticker.Start();
         }
 
         private static void Ticker_Elapsed(object sender, ElapsedEventArgs e)
         {
-            foreach (var action in actions)
+            foreach (var action in Actions.Where(action => action.IsActive()))
             {
-                if(action.IsActive())
-                {
-                    if(action.HasTimeConstraint() && action.TimeUntil > 0d)
-                        action.TimeUntil -= .2d;
+                if(action.HasTimeConstraint() && action.TimeUntil > 0d)
+                    action.TimeUntil -= .2d;
 
-                    if(action.AreConditionsMet())
-                    {
-                        BotClient.CPH.LogInfo($"[Kick] Timed action \"{action.TimedAction.Name}\" (ID {action.TimedAction.Id}) triggered!");
-                        action.AlreadyTriggered = true;
-                        action.ResetConditions();
-                        BotClient.CPH.TriggerCodeEvent("kickTimedAction." + action.TimedAction.Id, false);
-                    }
-                }
+                if (!action.AreConditionsMet()) continue;
+                BotClient.CPH.LogInfo($"[Kick] Timed action \"{action.TimedAction.Name}\" (ID {action.TimedAction.Id}) triggered!");
+                action.AlreadyTriggered = true;
+                action.ResetConditions();
+                BotClient.CPH.TriggerCodeEvent("kickTimedAction." + action.TimedAction.Id, false);
             }
         }
 
@@ -64,21 +58,21 @@ namespace Kick.Bot
 
             foreach (var rawAction in rawActions)
             {
-                var action = (from ex in actions where ex.TimedAction.Id == rawAction.Id select ex).FirstOrDefault() ?? new BotTimedAction();
+                var action = (from ex in Actions where ex.TimedAction.Id == rawAction.Id select ex).FirstOrDefault() ?? new BotTimedAction();
                 action.TimedAction = rawAction;
 
                 BotClient.CPH.LogInfo($"[Kick] Resetting timed action \"{rawAction.Name}\" (ID {rawAction.Id})");
                 action.ResetConditions();
-                BotClient.CPH.RegisterCustomTrigger("[Kick] Timed Action / " + rawAction.Name, "kickTimedAction."+rawAction.Id, new string[] { "Kick", "Timed Actions" });
+                BotClient.CPH.RegisterCustomTrigger("[Kick] Timed Action / " + rawAction.Name, "kickTimedAction."+rawAction.Id, new[] { "Kick", "Timed Actions" });
 
-                if(!actions.Contains(action))
-                    actions.Add(action);
+                if(!Actions.Contains(action))
+                    Actions.Add(action);
             }
         }
 
         public static void MessageReceived()
         {
-            foreach (var action in actions) {
+            foreach (var action in Actions) {
                 if(action.IsActive() && action.HasLinesConstraint() && action.MessagesUntil > 0)
                     --action.MessagesUntil;
             }
@@ -90,7 +84,7 @@ namespace Kick.Bot
         public TimedAction TimedAction { get; set; }
         public double TimeUntil { get; set; }
         public int MessagesUntil { get; set; }
-        public bool AlreadyTriggered { get; set; } = false;
+        public bool AlreadyTriggered { get; set; }
 
         public bool IsActive() => TimedAction.Enabled && (!AlreadyTriggered || TimedAction.Repeat);
         public bool HasTimeConstraint() => TimedAction.Interval > 0 || (TimedAction.RandomInterval && TimedAction.UpperInterval > 0);
