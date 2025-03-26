@@ -10,7 +10,7 @@
     <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
     <Title>Kick.bot</Title>
     <AssemblyName>Kick.bot</AssemblyName>
-    <RootNamespace>Kick.Bot</RootNamespace>
+    <RootNamespace>Kick</RootNamespace>
     <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
   </PropertyGroup>
 
@@ -18,7 +18,8 @@
     <Compile Remove="Properties\**" />
     <EmbeddedResource Remove="Properties\**" />
     <None Remove="Properties\**" />
-    <Compile Update="PluginConfig.cs">
+    <None Include="Bot\BotEventSimulation.cs" />
+    <Compile Update="Bot\PluginConfig.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>

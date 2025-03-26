@@ -19,8 +19,9 @@ using Streamer.bot.Plugin.Interface;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Kick.Models.Events;
-using Kick.Models.API;
+using Kick.API;
+using Kick.API.Events;
+using Kick.API.Models;
 using System.Linq;
 
 namespace Kick.Bot

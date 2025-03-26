@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Kick;
 using Kick.Bot;
-using Kick.Models.API;
+using Kick.API.Models;
 
 public class CPHInline
 {

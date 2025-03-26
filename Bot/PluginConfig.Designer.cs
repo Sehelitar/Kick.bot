@@ -135,8 +135,8 @@ namespace Kick.Bot
             // broadcasterPicture
             // 
             this.broadcasterPicture.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
-            this.broadcasterPicture.Image = global::Kick.Bot.Properties.Resources.KickLogo;
-            this.broadcasterPicture.InitialImage = global::Kick.Bot.Properties.Resources.KickLogo;
+            this.broadcasterPicture.Image = global::Kick.Properties.Resources.KickLogo;
+            this.broadcasterPicture.InitialImage = global::Kick.Properties.Resources.KickLogo;
             this.broadcasterPicture.Location = new System.Drawing.Point(20, 30);
             this.broadcasterPicture.Name = "broadcasterPicture";
             this.broadcasterPicture.Size = new System.Drawing.Size(96, 96);
@@ -186,7 +186,7 @@ namespace Kick.Bot
             // 
             // botPicture
             // 
-            this.botPicture.Image = global::Kick.Bot.Properties.Resources.KickLogo;
+            this.botPicture.Image = global::Kick.Properties.Resources.KickLogo;
             this.botPicture.Location = new System.Drawing.Point(20, 30);
             this.botPicture.Name = "botPicture";
             this.botPicture.Size = new System.Drawing.Size(96, 96);

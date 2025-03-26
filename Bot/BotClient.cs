@@ -15,8 +15,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using Kick.Models.Events;
-using Kick.Models.API;
+using Kick.API;
+using Kick.API.Events;
+using Kick.API.Models;
 using Streamer.bot.Plugin.Interface;
 using System;
 using System.Collections.Generic;
@@ -43,8 +44,11 @@ namespace Kick.Bot
         private KickClient AltClient { get; }
 
         public User AuthenticatedUser { get; private set; }
+        public User AuthenticatedBot { get; private set; }
 
         public BotClient() {
+            CPH.LogDebug("[Kick] Extension loaded. Starting...");
+            
             CPH.RegisterCustomTrigger("[Kick] Chat Message", BotEventListener.BotEventType.Message, new[] { "Kick", "Chat" });
 
             CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new[] { "Kick", "Commands" });
@@ -74,14 +78,26 @@ namespace Kick.Bot
             CPH.RegisterCustomTrigger("[Kick] Title/Category Changed", BotEventListener.BotEventType.TitleChanged, new[] { "Kick", "Stream" });
 
             CPH.RegisterCustomTrigger("[Kick] Raid", BotEventListener.BotEventType.Raid, new[] { "Kick" });
+            
+            CPH.LogDebug("[Kick] Basic triggers registered.");
 
-            var target = Path.GetTempPath() + "KickLogo.png";
-            Properties.Resources.KickLogo.Save(target, ImageFormat.Png);
-
-            CPH.LogDebug("[Kick] Extension loaded. Starting...");
-            Client = new KickClient();
-            AltClient = new KickClient("KickBotProfile");
+            //var target = Path.GetTempPath() + "KickLogo.png";
+            //Properties.Resources.KickLogo.Save(target, ImageFormat.Png);
+            
+            CPH.LogDebug("[Kick] Starting UI thread...");
+            _pluginUi = new PluginUi();
+            
+            // Broadcaster
+            CPH.LogDebug("[Kick] Client initialization...");
+            Client = _pluginUi.BroadcasterClient;
+            Client.Browser.Authenticated += Authenticated;
+            // Bot
+            CPH.LogDebug("[Kick] Bot initialization...");
+            AltClient = _pluginUi.BotClient;
+            AltClient.Browser.Authenticated += BotAuthenticated;
+            
             CommandCounter.PruneVolatile();
+            CPH.LogDebug("[Kick] Init completed.");
         }
 
         ~BotClient()
@@ -91,24 +107,46 @@ namespace Kick.Bot
 
         public void OpenConfig()
         {
-            if (_pluginUi == null)
-                _pluginUi = new PluginUi(Client, AltClient);
             _pluginUi.OpenConfig();
         }
 
-        public async Task Authenticate()
+        public void BeginBroadcasterAuthentication()
         {
-            CPH.LogDebug("[Kick] Authentication...");
-            AuthenticatedUser = await Client.Authenticate();
-            CPH.LogDebug($"[Kick] Connected as {AuthenticatedUser.Username}");
+            CPH.LogDebug("[Kick] Begin broadcaster authentication...");
+            Client.BeginAuthentication();
+        }
+        
+        public void BeginBotAuthentication()
+        {
+            CPH.LogDebug("[Kick] Begin bot authentication...");
+            AltClient.BeginAuthentication();
+        }
 
-            var target = Path.GetTempPath() + "KickLogo.png";
-            new ToastContentBuilder()
-                .AddText("Kick")
-                .AddText($"Successfuly connected as {AuthenticatedUser.Username}")
-                .AddAppLogoOverride(new Uri(target), ToastGenericAppLogoCrop.None)
-                .SetToastDuration(ToastDuration.Short)
-                .Show();
+        private void Authenticated(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                AuthenticatedUser = await Client.GetCurrentUserInfos();
+                CPH.LogDebug($"[Kick] Connected as {AuthenticatedUser.Username}");
+                var target = Path.GetTempPath() + "KickLogo.png";
+                new ToastContentBuilder()
+                    .AddText("Kick")
+                    .AddText($"Successfuly connected as {AuthenticatedUser.Username}")
+                    //.AddAppLogoOverride(new Uri(target), ToastGenericAppLogoCrop.None)
+                    .SetToastDuration(ToastDuration.Short)
+                    .Show();
+
+                await StartListeningToSelf();
+            });
+        }
+        
+        private void BotAuthenticated(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                AuthenticatedBot = await Client.GetCurrentUserInfos();
+                CPH.LogDebug($"[Kick] Bot connected as {AuthenticatedBot.Username}");
+            });
         }
 
         public async Task<BotEventListener> StartListeningTo(string channelName)
