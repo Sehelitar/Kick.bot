@@ -23,7 +23,9 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Kick.Bot;
 using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
 
 namespace Kick.API.Internal
 {
@@ -32,16 +34,17 @@ namespace Kick.API.Internal
         private const string KickBaseUri = "https://kick.com";
         public string Profile { get; }
         
-        private const int NoCloseBtn = 0x200;
         private bool _closable;
         
         private AsyncJsBridge Bridge { get; set; }
-        private CoreWebView2Controller WebController { get; set; }
+        private WebView2 WebController { get; set; }
 
-        public event EventHandler<EventArgs> Ready;
-        public event EventHandler<EventArgs> Authenticated;
+        public event EventHandler<EventArgs> OnReady;
+        public event EventHandler<EventArgs> OnAuthenticated;
+        
+        public bool IsAuthenticated { get; private set; }
 
-        internal KickBrowser(string profile = null)
+        internal KickBrowser(string profile = null) : base()
         {
             Profile = profile;
             
@@ -49,86 +52,133 @@ namespace Kick.API.Internal
             Icon = Properties.Resources.Kick;
             MaximizeBox = false;
             MinimizeBox = false;
-            ControlBox = false;
+            ControlBox = true;
             Size = new Size(700, 900);
+            MinimumSize = new Size(400, 500);
+            MaximumSize = new Size(1000, 1300);
             StartPosition = FormStartPosition.CenterScreen;
             Text = @"Kick - Login";
 
-            FormClosing += (sender, e) => {
-                if (e.CloseReason == CloseReason.UserClosing && !_closable)
-                    e.Cancel = true;
-                else
-                    Hide();
+            FormClosing += (sender, e) =>
+            {
+                if (_closable) return;
+                e.Cancel = true;
+                Hide();
             };
             Disposed += (sender, e) =>
             {
                 Controls.Clear();
             };
 
-            Task.Run(async () =>
+            var done = false;
+            var env = CoreWebView2Environment.CreateAsync().GetAwaiter().GetResult();
+            var options = env.CreateCoreWebView2ControllerOptions();
+            options.ProfileName = "Kick" + (Profile ?? "Broadcaster");
+            options.IsInPrivateModeEnabled = false;
+
+            WebController = new WebView2()
             {
-                var done = false;
-                var env = await CoreWebView2Environment.CreateAsync();
-                var options = env.CreateCoreWebView2ControllerOptions();
-                options.ProfileName = "Kick" + (Profile ?? "Broadcaster");
-                options.IsInPrivateModeEnabled = false;
-    
-                WebController = await env.CreateCoreWebView2ControllerAsync(Handle, options);
-                WebController.Bounds = new Rectangle(Point.Empty, Size);
+                Bounds = new Rectangle(Point.Empty, ClientSize),
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+            };
+            Controls.Add(WebController);
+            
+            WebController.EnsureCoreWebView2Async(env, options);
+            WebController.CoreWebView2InitializationCompleted += (sender, args) =>
+            {
                 WebController.CoreWebView2.NavigationCompleted += delegate
                 {
                     if (done)
                         return;
                     done = true;
-    
+
                     try
                     {
                         WebController.CoreWebView2.IsMuted = true;
                         WebController.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = false;
                         WebController.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
-    
+
                         Bridge = new AsyncJsBridge();
                         WebController.CoreWebView2.AddHostObjectToScript("bridge", Bridge);
+                        BotClient.CPH.LogDebug($"[Kick] Bridge registered for {options.ProfileName}");
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // ignored
+                        MessageBox.Show(ex.ToString());
                     }
 #if DEBUG
                     WebController.CoreWebView2.OpenDevToolsWindow();
 #endif
-                    Ready?.Invoke(this, EventArgs.Empty);
+                    OnReady?.Invoke(this, EventArgs.Empty);
                     
                     ExecuteAsyncFetch(
                         null,
                         @"return new Promise((r,j) => {
-	const loop = () => {
-		cookieStore
-			.get('session_token')
-			.then(cookie => {
-				if(cookie) {
-					clearInterval(loopInterval);
-					r('OK');
-				}
-			});
-	};
-	const loopInterval = setInterval(loop, 500);
+const loop = () => {
+    cookieStore
+		.get('session_token')
+		.then(cookie => {
+            if(cookie) {
+                clearInterval(loopInterval);
+				r('OK');
+			}
+		});
+};
+const loopInterval = setInterval(loop, 500);
 });"
                     ).ContinueWith((Task response) =>
                     {
-                        TriggerAuthenticated();
+                        if(response.IsFaulted)
+                            BotClient.CPH.LogError($"[Kick] An exception occured while looking for authentication status : {response.Exception}");
+                        else if (response.IsCompleted)
+                        {
+                            IsAuthenticated = true;
+                            BotClient.CPH.LogInfo($"[Kick] Authenticated with Kick!");
+                            OnAuthenticated?.Invoke(this, EventArgs.Empty);
+                        }
                     });
                 };
                 WebController.CoreWebView2.Navigate(KickBaseUri);
-            });
+            };
         }
-
-        private void TriggerAuthenticated()
+        
+        public void BeginAuthentication()
         {
-            if(InvokeRequired)
-                Invoke((Action)TriggerAuthenticated);
-            else
-                Authenticated?.Invoke(this, EventArgs.Empty);
+            BotClient.CPH.LogInfo($"[Kick] Attempting to authenticate with Kick... IsAlreadyAuth={IsAuthenticated}");
+            if (IsAuthenticated) return;
+
+            // Automatically open login form
+            ExecuteScriptAsync(@"(function() { document.evaluate(""/html/body/div/nav/div/button[3]"", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click(); })();");
+
+            // Wait for UI to respond
+            Thread.Sleep(200);
+
+            // Hide unsupported UI elements (close button, account creation, SSO login methods...)
+            ExecuteScriptAsync(@"(function() {
+                let expressions = [
+                    ""/html/body/div[3]/div[1]/div/button"", // Close Button
+                    ""/html/body/div[3]/div[2]"", // Account Creation
+                    ""/html/body/div[3]/div[3]/div/div[1]"", // -OR-
+                    ""/html/body/div[3]/div[3]/div/div[2]"", // Ext Auth
+                    ""/html/body/div[3]/div[3]/div/form/div[2]/div/div[2]"" // Password Reset
+                ];
+                let xpath = new XPathEvaluator();
+                expressions.forEach(expr => {
+                    try {
+                        let xnodes = xpath.evaluate(expr, document);
+                        let xchild, remChilds = [];
+                        while(xchild = xnodes.iterateNext())
+                            remChilds.push(xchild);
+                        // remChilds.forEach(child => child.parentNode.removeChild(child));
+                        remChilds.forEach(child => child.style.display = ""none"");
+                    } catch (e) {
+                        console.log(`Failed to hide elements at path {expr}`);
+                    }
+                });
+            })();");
+            
+            // Display window
+            Show(BotClient.GlobalPluginUi.ConfigWindow);
         }
         
         public void ForceClose()
@@ -137,54 +187,33 @@ namespace Kick.API.Internal
             Close();
         }
 
-        protected override CreateParams CreateParams
-        {
-            get
-            {
-                var myCp = base.CreateParams;
-                myCp.ClassStyle |= NoCloseBtn;
-                return myCp;
-            }
-        }
-
-        public new void Show()
-        {
-            if(InvokeRequired)
-                Invoke((Action)base.Show);
-            else
-                base.Show();
-        }
-
-        public new void Hide()
-        {
-            if(InvokeRequired)
-                Invoke((Action)base.Hide);
-            else
-                base.Hide();
-        }
-
         public void ExecuteScriptAsync(string script)
         {
-            if (InvokeRequired)
-                Invoke((Action)(() => ExecuteScriptAsync(script)));
+            if (WebController.InvokeRequired)
+                WebController.Invoke((Action)(() => ExecuteScriptAsync(script)));
             else
                 WebController.CoreWebView2.ExecuteScriptAsync(script);
         }
 
-        public async Task<string> ExecuteAsyncFetch(string target, string jsPayload = null)
+        public string ExecuteFetch(string target, string jsPayload = null)
         {
-            return await Task.Run(() => {
-                 // Génération du GUID unique
+            try
+            {
+                // Génération du GUID unique
                 var actionGuid = Guid.NewGuid().ToString();
 
                 // Préparation du payload Javascript
                 if (jsPayload == null)
                 {
-                    jsPayload = "fetch(\"" + target + "\").then(resp => resp.text()).then(text => chrome.webview.hostObjects.bridge.Resolve(\"" + actionGuid + "\", text));";
+                    jsPayload = "fetch(\"" + target +
+                                "\").then(resp => resp.text()).then(text => chrome.webview.hostObjects.bridge.Resolve(\"" +
+                                actionGuid + "\", text));";
                 }
                 else
                 {
-                    jsPayload = "(new Promise((r,j) => {\r\ntry { r((() => {\r\n" + jsPayload + "\r\n})()); } catch(e) { j(e.getMessage()); }\r\n})).then(text => chrome.webview.hostObjects.bridge.Resolve(\"" + actionGuid + "\", text));";
+                    jsPayload = "(new Promise((r,j) => {\r\ntry { r((() => {\r\n" + jsPayload +
+                                "\r\n})()); } catch(e) { j(e.getMessage()); }\r\n})).then(text => chrome.webview.hostObjects.bridge.Resolve(\"" +
+                                actionGuid + "\", text));";
                 }
 
                 // Préparation de la tâche d'attente
@@ -192,7 +221,7 @@ namespace Kick.API.Internal
 
                 // Enregistrement du callback
                 string data = null;
-                Action<string> callback = delegate (string output)
+                Action<string> callback = delegate(string output)
                 {
                     data = output;
                     Bridge.UnregisterCallback(actionGuid);
@@ -202,20 +231,34 @@ namespace Kick.API.Internal
 
                 // Execution du javascript
                 ExecuteScriptAsync(jsPayload);
-            
+
                 // En attente de la réponse
                 waitHandle.WaitOne();
 
                 if (string.IsNullOrEmpty(data))
                     throw new Exception("No data received.");
-                
+
                 return data;
-            });
+            }
+            catch (ThreadAbortException)
+            {
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                BotClient.CPH.LogError($"[Kick] An exception occured while executing a Javascript payload : {ex}");
+                throw new Exception("An error occured while executing a Javascript payload.", ex);
+            }
+        }
+
+        public async Task<string> ExecuteAsyncFetch(string target, string jsPayload = null)
+        {
+            return await Task.Run(() => ExecuteFetch(target, jsPayload));
         }
 
         public async Task<T> ExecuteAsyncFetch<T>(string target, string jsPayload = null)
         {
-            return JsonConvert.DeserializeObject<T>(await ExecuteAsyncFetch(target, jsPayload));
+            return await Task.Run(() => JsonConvert.DeserializeObject<T>(ExecuteFetch(target, jsPayload)));
         }
     }
 
@@ -229,14 +272,14 @@ namespace Kick.API.Internal
         public void RegisterCallback(string id, Action<string> callback)
         {
             _callbacks.Add(id, callback);
+            BotClient.CPH.LogDebug($"[Kick] Bridge callback registered (ID: {id})");
         }
 
         public void Resolve(string id, string data)
         {
-            if (_callbacks.ContainsKey(id))
-            {
-                _callbacks[id].Invoke(data);
-            }
+            if (!_callbacks.ContainsKey(id)) return;
+            BotClient.CPH.LogDebug($"[Kick] Response received for callback ID {id}");
+            _callbacks[id].Invoke(data);
         }
 
         [ComVisible(false)]

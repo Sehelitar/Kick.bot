@@ -87,6 +87,10 @@ namespace Kick.API
         // [PUB] Message détaché
         public delegate void OnMessageUnpinnedHandler();
         public event OnMessageUnpinnedHandler OnMessageUnpinned;
+        
+        // [PUB] Récompense achetée
+        public delegate void OnRewardRedeemedHandler(RewardRedeemedEvent rewardRedeemedEvent);
+        public event OnRewardRedeemedHandler OnRewardRedeemed;
 
         // [MOD] Termes bloqués
         public delegate void OnBannedWordChangedHandler(BannedWordEvent bannedWordEvent);
@@ -379,6 +383,10 @@ namespace Kick.API
                                 case "SubscriptionGifted":
                                     var newGift = JsonConvert.DeserializeObject<GiftedSubscriptionEvent>(eventData.Data);
                                     OnSubGift?.Invoke(newGift);
+                                    return;
+                                case "RedeemedReward":
+                                    var newRedeem = JsonConvert.DeserializeObject<RewardRedeemedEvent>(eventData.Data);
+                                    OnRewardRedeemed?.Invoke(newRedeem);
                                     return;
                             }
 

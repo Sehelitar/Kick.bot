@@ -22,6 +22,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
+using Kick.Bot;
 
 namespace Kick.API
 {
@@ -31,50 +32,13 @@ namespace Kick.API
 
         private KickEventListener EventListener { get; set; }
 
-        public bool IsAuthenticated { get; private set; }
+        public bool IsAuthenticated => Browser?.IsAuthenticated ?? false;
 
         internal KickBrowser Browser { get; }
 
-        internal KickClient(string profile = null)
+        internal KickClient(KickBrowser browser)
         {
-            Browser = new KickBrowser(profile);
-            Browser.Authenticated += (sender, e) => { IsAuthenticated = true; };
-        }
-
-        public void BeginAuthentication()
-        {
-            if (IsAuthenticated) return;
-            Browser.Show();
-
-            // Automatically open login form
-            Browser.ExecuteScriptAsync(@"(function() { document.evaluate(""/html/body/div/nav/div/button[3]"", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click(); })();");
-
-            // Wait for UI to respond
-            Thread.Sleep(200);
-
-            // Hide unsupported UI elements (close button, account creation, SSO login methods...)
-            Browser.ExecuteScriptAsync(@"(function() {
-                let expressions = [
-                    ""/html/body/div[3]/div[1]/div/button"", // Close Button
-                    ""/html/body/div[3]/div[2]"", // Account Creation
-                    ""/html/body/div[3]/div[3]/div/div[1]"", // -OR-
-                    ""/html/body/div[3]/div[3]/div/div[2]"", // Ext Auth
-                    ""/html/body/div[3]/div[3]/div/form/div[2]/div/div[2]"" // Password Reset
-                ];
-                let xpath = new XPathEvaluator();
-                expressions.forEach(expr => {
-                    try {
-                        let xnodes = xpath.evaluate(expr, document);
-                        let xchild, remChilds = [];
-                        while(xchild = xnodes.iterateNext())
-                            remChilds.push(xchild);
-                        // remChilds.forEach(child => child.parentNode.removeChild(child));
-                        remChilds.forEach(child => child.style.display = ""none"");
-                    } catch (e) {
-                        console.log(`Failed to hide elements at path {expr}`);
-                    }
-                });
-            })();");
+            Browser = browser;
         }
 
         private static Uri ApiTarget(string endpoint)

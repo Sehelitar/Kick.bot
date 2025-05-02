@@ -114,6 +114,7 @@ namespace Kick.Bot
             this.broadcasterLoginBtn.TabIndex = 3;
             this.broadcasterLoginBtn.Text = "Login";
             this.broadcasterLoginBtn.UseVisualStyleBackColor = true;
+            this.broadcasterLoginBtn.Click += new System.EventHandler(this.broadcasterLoginBtn_Click);
             // 
             // broadcasterStatus
             // 
@@ -150,7 +151,6 @@ namespace Kick.Bot
             this.groupBox2.Controls.Add(this.botStatus);
             this.groupBox2.Controls.Add(this.botName);
             this.groupBox2.Controls.Add(this.botPicture);
-            this.groupBox2.Enabled = false;
             this.groupBox2.Location = new System.Drawing.Point(404, 12);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(386, 219);
@@ -166,6 +166,7 @@ namespace Kick.Bot
             this.botLoginBtn.TabIndex = 5;
             this.botLoginBtn.Text = "Login";
             this.botLoginBtn.UseVisualStyleBackColor = true;
+            this.botLoginBtn.Click += new System.EventHandler(this.botLoginBtn_Click);
             // 
             // botStatus
             // 
@@ -217,9 +218,7 @@ namespace Kick.Bot
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "PluginConfig";
-            this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.Text = "Kick.bot Configuration";
-            this.TopMost = true;
             this.groupBox1.ResumeLayout(false);
             this.broadcasterServices.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.broadcasterSocketStatus)).EndInit();

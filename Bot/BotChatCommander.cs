@@ -36,12 +36,14 @@ namespace Kick.Bot
             var oldCommands = _commands;
             var newCommands = new List<BotChatCommand>();
 
+            StreamerBotAppSettings.Commands.Sort((x, y) => string.Compare(x.Name, y.Name, StringComparison.CurrentCultureIgnoreCase));
             foreach(var botCommand in StreamerBotAppSettings.Commands)
             {
                 var oldMatchRequest = from oldCommand in oldCommands where oldCommand.CommandInfo.Id == botCommand.Id select oldCommand;
-                if (oldMatchRequest.Any())
+                var botChatCommands = oldMatchRequest.ToList();
+                if (botChatCommands.Any())
                 {
-                    var oldChatCommand = oldMatchRequest.First();
+                    var oldChatCommand = botChatCommands.First();
                     oldChatCommand.CommandInfo = botCommand;
 
                     newCommands.Add(oldChatCommand);
@@ -59,7 +61,7 @@ namespace Kick.Bot
                 }
 
                 CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommand.{botCommand.Id}", new string[] { "Kick", "Commands" });
-                CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} [Cooldown] ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommandCooldown.{botCommand.Id}", new string[] { "Kick", "Commands" });
+                CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} [Cooldown] ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommandCooldown.{botCommand.Id}", new string[] { "Kick", "Commands Cooldown" });
             }
 
             _commands = newCommands;

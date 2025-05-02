@@ -37,7 +37,7 @@ namespace Kick.Bot
                 {
                     Load();
                 }
-                return _commands.Commands;
+                return _commands?.Commands ?? new List<StreamerBotCommand>();
             }
         }
 
@@ -73,20 +73,23 @@ namespace Kick.Bot
             };
             _configWatcher.Changed += delegate (object sender, FileSystemEventArgs e)
             {
-                if (e.Name == "commands.json")
-                    LoadCommandsSettings();
-                if (e.Name == "settings.json")
-                    LoadSettings();
+                switch (e.Name)
+                {
+                    case "commands.json":
+                        LoadCommandsSettings();
+                        break;
+                    case "settings.json":
+                        LoadSettings();
+                        break;
+                }
             };
         }
 
         public static void StopWatcher()
         {
-            if (_configWatcher != null)
-            {
-                _configWatcher.Dispose();
-                _configWatcher = null;
-            }
+            if (_configWatcher == null) return;
+            _configWatcher.Dispose();
+            _configWatcher = null;
         }
 
         private static void LoadCommandsSettings()

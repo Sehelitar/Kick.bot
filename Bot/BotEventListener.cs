@@ -58,6 +58,7 @@ namespace Kick.Bot
             _eventListener.OnRaid += Kick_OnRaid;
             _eventListener.OnMessagePinned += Kick_OnMessagePinned;
             _eventListener.OnMessageUnpinned += Kick_OnMessageUnpinned;
+            _eventListener.OnRewardRedeemed += Kick_OnRewardRedeemed;
 
             _eventListener.JoinAsync(Channel).Wait();
 
@@ -956,6 +957,40 @@ namespace Kick.Bot
             }
         }
 
+        private void Kick_OnRewardRedeemed(RewardRedeemedEvent rewardRedeemedEvent)
+        {
+            try
+            {
+                var rewardData = new Dictionary<string, object>()
+                {
+                    { "user", rewardRedeemedEvent.User.Username },
+                    { "userId", rewardRedeemedEvent.User.Id },
+
+                    { "redeemId", rewardRedeemedEvent.Id },
+                    { "rewardId", rewardRedeemedEvent.Reward.Id },
+                    { "rewardTitle", rewardRedeemedEvent.Reward.Title },
+                    { "rewardUserInput", rewardRedeemedEvent.Reward.UserInput },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+                SendToQueue(new BotEvent
+                {
+                    ActionId = $"{BotEventType.RewardRedeemed}.{rewardRedeemedEvent.Reward.Id}",
+                    Arguments = rewardData
+                });
+                SendToQueue(new BotEvent
+                {
+                    ActionId = BotEventType.RewardRedeemed,
+                    Arguments = rewardData
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred when reading redeemed reward data : {ex.Message}");
+            }
+        }
+
         private void UpdateActivityDB(EventUser user)
         {
             using (var activity = UserActivity.ForUser(user.Id))
@@ -992,6 +1027,7 @@ namespace Kick.Bot
             public const string TitleChanged = "kickTitleChanged";
             public const string MessagePinned = "kickMessagePinned";
             public const string MessageUnpinned = "kickMessageUnpinned";
+            public const string RewardRedeemed = "kickRewardRedeemed";
         }
 
         internal class BotEvent

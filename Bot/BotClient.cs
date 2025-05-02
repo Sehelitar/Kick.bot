@@ -38,10 +38,10 @@ namespace Kick.Bot
     {
         public static IInlineInvokeProxy CPH;
         
-        private static PluginUi _pluginUi;
+        internal static PluginUi GlobalPluginUi;
 
-        private KickClient Client { get; }
-        private KickClient AltClient { get; }
+        private KickClient Client { get; set; }
+        private KickClient AltClient { get; set; }
 
         public User AuthenticatedUser { get; private set; }
         public User AuthenticatedBot { get; private set; }
@@ -52,7 +52,7 @@ namespace Kick.Bot
             CPH.RegisterCustomTrigger("[Kick] Chat Message", BotEventListener.BotEventType.Message, new[] { "Kick", "Chat" });
 
             CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new[] { "Kick", "Commands" });
-            CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands" });
+            CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands Cooldown" });
 
             CPH.RegisterCustomTrigger("[Kick] Message Pinned", BotEventListener.BotEventType.MessagePinned, new[] { "Kick", "Chat" });
             CPH.RegisterCustomTrigger("[Kick] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new[] { "Kick", "Chat" });
@@ -79,22 +79,22 @@ namespace Kick.Bot
 
             CPH.RegisterCustomTrigger("[Kick] Raid", BotEventListener.BotEventType.Raid, new[] { "Kick" });
             
+            CPH.RegisterCustomTrigger("[Kick] Reward Redeemed (Any)", BotEventListener.BotEventType.RewardRedeemed, new[] { "Kick", "Rewards" });
+            
             CPH.LogDebug("[Kick] Basic triggers registered.");
-
-            //var target = Path.GetTempPath() + "KickLogo.png";
-            //Properties.Resources.KickLogo.Save(target, ImageFormat.Png);
             
             CPH.LogDebug("[Kick] Starting UI thread...");
-            _pluginUi = new PluginUi();
+            GlobalPluginUi = new PluginUi();
             
             // Broadcaster
             CPH.LogDebug("[Kick] Client initialization...");
-            Client = _pluginUi.BroadcasterClient;
-            Client.Browser.Authenticated += Authenticated;
+            Client = GlobalPluginUi.BroadcasterKClient;
+            Client.Browser.OnAuthenticated += Authenticated;
+            
             // Bot
             CPH.LogDebug("[Kick] Bot initialization...");
-            AltClient = _pluginUi.BotClient;
-            AltClient.Browser.Authenticated += BotAuthenticated;
+            AltClient = GlobalPluginUi.BotKClient;
+            AltClient.Browser.OnAuthenticated += BotAuthenticated;
             
             CommandCounter.PruneVolatile();
             CPH.LogDebug("[Kick] Init completed.");
@@ -107,19 +107,19 @@ namespace Kick.Bot
 
         public void OpenConfig()
         {
-            _pluginUi.OpenConfig();
+            Task.Run(() => GlobalPluginUi.OpenConfig());
         }
 
         public void BeginBroadcasterAuthentication()
         {
             CPH.LogDebug("[Kick] Begin broadcaster authentication...");
-            Client.BeginAuthentication();
+            Client.Browser.BeginAuthentication();
         }
         
         public void BeginBotAuthentication()
         {
             CPH.LogDebug("[Kick] Begin bot authentication...");
-            AltClient.BeginAuthentication();
+            AltClient.Browser.BeginAuthentication();
         }
 
         private void Authenticated(object sender, EventArgs e)
