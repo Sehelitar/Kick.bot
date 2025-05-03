@@ -82,7 +82,7 @@ namespace Kick.Bot
             // 
             // broadcasterSocketStatus
             // 
-            this.broadcasterSocketStatus.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(192)))), ((int)(((byte)(0)))));
+            this.broadcasterSocketStatus.BackColor = System.Drawing.Color.Red;
             this.broadcasterSocketStatus.Location = new System.Drawing.Point(183, 33);
             this.broadcasterSocketStatus.Name = "broadcasterSocketStatus";
             this.broadcasterSocketStatus.Size = new System.Drawing.Size(16, 16);
@@ -97,6 +97,7 @@ namespace Kick.Bot
             this.broadcasterPusherDisconnect.TabIndex = 1;
             this.broadcasterPusherDisconnect.Text = "Disconnect";
             this.broadcasterPusherDisconnect.UseVisualStyleBackColor = true;
+            this.broadcasterPusherDisconnect.Click += new System.EventHandler(this.broadcasterPusherDisconnect_Click);
             // 
             // label1
             // 

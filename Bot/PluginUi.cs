@@ -24,6 +24,8 @@ namespace Kick.Bot
             var awaitLock = new ManualResetEvent(false);
             UiThread = new Thread(() =>
             {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
                 UiContext = SynchronizationContext.Current;
                 
                 ConfigWindow = new PluginConfig();
@@ -64,7 +66,6 @@ namespace Kick.Bot
                 AppContext = new ApplicationContext();
                 AppContext.MainForm = ConfigWindow;
                 
-                Application.EnableVisualStyles();
                 Application.Run(AppContext);
                 
                 AppContext = null;
@@ -151,7 +152,7 @@ namespace Kick.Bot
             
                     matches = ConfigWindow.Controls.Find("broadcasterSocketStatus", true);
                     if (matches.Any())
-                        matches.First().BackColor = BotKClient.IsAuthenticated && BroadcasterKClient.GetEventListener().IsConnected ? Color.Green : Color.Red;
+                        matches.First().BackColor = BotKClient.IsAuthenticated && BroadcasterKClient.GetEventListener().IsConnected ? Color.SpringGreen : Color.Red;
                     
                     matches = ConfigWindow.Controls.Find("broadcasterName", true);
                     if (matches.Any())

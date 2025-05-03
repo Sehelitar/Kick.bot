@@ -174,6 +174,14 @@ namespace Kick.API
             [JsonProperty("status")]
             public KickApiOperationStatus Status { get; set; }
         }
+        
+        internal class KickApiOperationSimpleResponse
+        {
+            [JsonProperty("message")]
+            public string Message { get; set; }
+            [JsonProperty("status")]
+            public bool Status { get; set; }
+        }
 
         internal class KickApiOperationStatus
         {

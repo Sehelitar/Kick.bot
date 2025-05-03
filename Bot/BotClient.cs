@@ -21,6 +21,7 @@ using Kick.API.Models;
 using Streamer.bot.Plugin.Interface;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Net;
 using System.Threading.Tasks;
 using System.IO;
@@ -31,6 +32,7 @@ using LiteDB;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Runtime.Remoting;
+using Newtonsoft.Json;
 
 namespace Kick.Bot
 {
@@ -45,6 +47,8 @@ namespace Kick.Bot
 
         public User AuthenticatedUser { get; private set; }
         public User AuthenticatedBot { get; private set; }
+        
+        public BotEventListener BroadcasterListener { get; private set; }
 
         public BotClient() {
             CPH.LogDebug("[Kick] Extension loaded. Starting...");
@@ -136,7 +140,8 @@ namespace Kick.Bot
                     .SetToastDuration(ToastDuration.Short)
                     .Show();
 
-                await StartListeningToSelf();
+                BroadcasterListener = await StartListeningToSelf();
+                CPH.LogDebug($"[Kick] Listener active.");
             });
         }
         
@@ -169,11 +174,13 @@ namespace Kick.Bot
             return new BotEventListener(Client.GetEventListener(), channel);
         }
 
-        public void SendMessage(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool SendMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (args.TryGetValue("chatroomId", out var chatroomId))
                     chatroomId = Convert.ToInt64(chatroomId);
@@ -181,21 +188,38 @@ namespace Kick.Bot
                     chatroomId = channel.Chatroom.Id;
                 else
                     throw new Exception("missing argument, chatroomId required");
+                
+                if (!args.TryGetValue("message", out var message))
+                    throw new Exception("missing argument, message required");
 
-                Client.SendMessageToChatroom(chatroomId, Convert.ToString(args["message"])).Wait();
+                Task<ChatMessageEvent> result;
+                if(AltClient.Browser.IsAuthenticated)
+                    result = AltClient.SendMessageToChatroom(chatroomId, Convert.ToString(message));
+                else
+                    result = Client.SendMessageToChatroom(chatroomId, Convert.ToString(message));
+
+                result.Wait();
+                if (result.Status != TaskStatus.RanToCompletion) return false;
+                
+                CPH.SetArgument("msgId", result.Result.Id);
+                CPH.SetArgument("pinnableMessage", JsonConvert.SerializeObject(result.Result));
+                return true;
             }
             catch(Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while sending a message to chatroom : {ex}");
+                return false;
             }
         }
 
-        public void DeleteMessage(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool DeleteMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (args.TryGetValue("chatroomId", out var chatroomId))
                     chatroomId = Convert.ToInt64(chatroomId);
@@ -207,20 +231,26 @@ namespace Kick.Bot
                 if (!args.TryGetValue("msgId", out var msgId))
                     throw new Exception("missing argument, msgId required");
 
-                Client.DeleteMessage(chatroomId, msgId);
+                var result = Client.DeleteMessage(chatroomId, msgId);
+                result.Wait();
+                return result.Status != TaskStatus.RanToCompletion ? false : result.Result;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while deleting a message from chatroom : {ex}");
+                return false;
             }
         }
 
-        public void SendReply(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool SendReply(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (args.TryGetValue("chatroomId", out var chatroomId))
                     chatroomId = Convert.ToInt64(chatroomId);
@@ -228,19 +258,41 @@ namespace Kick.Bot
                     chatroomId = channel.Chatroom.Id;
                 else
                     throw new Exception("missing argument, chatroomId required");
-                var message = args.TryGetValue("rawInput", out var rawInput) ? (string)Convert.ToString(rawInput) : (string)args["message"];
-                Client.SendReplyToChatroom(
-                    chatroomId,
-                    Convert.ToString(args["reply"]),
-                    Convert.ToString(args["msgId"]),
-                    Convert.ToString(message),
-                    Convert.ToInt64(args["userId"]),
-                    Convert.ToString(args["user"])
-                ).Wait();
+                
+                if (!args.TryGetValue("message", out var message))
+                    throw new Exception("missing argument, message required");
+
+                Task<ChatMessageEvent> result;
+                if(AltClient.Browser.IsAuthenticated)
+                    result = AltClient.SendReplyToChatroom(
+                        chatroomId,
+                        Convert.ToString(args["reply"]),
+                        Convert.ToString(args["msgId"]),
+                        Convert.ToString(message),
+                        Convert.ToInt64(args["userId"]),
+                        Convert.ToString(args["user"])
+                    );
+                else
+                    result = Client.SendReplyToChatroom(
+                        chatroomId,
+                        Convert.ToString(args["reply"]),
+                        Convert.ToString(args["msgId"]),
+                        Convert.ToString(message),
+                        Convert.ToInt64(args["userId"]),
+                        Convert.ToString(args["user"])
+                    );
+
+                result.Wait();
+                if (result.Status != TaskStatus.RanToCompletion) return false;
+                
+                CPH.SetArgument("msgId", result.Id);
+                CPH.SetArgument("pinnableMessage", JsonConvert.SerializeObject(result.Result));
+                return true;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while sending a reply : {ex}");
+                return false;
             }
         }
 
@@ -248,6 +300,9 @@ namespace Kick.Bot
         {
             try
             {
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+                
                 if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != String.Empty)
                     GetKickChannelInfos(args, channel, Convert.ToString(userName), true);
                 else if (args.TryGetValue("targetUser", out var user) && user != null && user != String.Empty)
@@ -269,6 +324,8 @@ namespace Kick.Bot
         {
             try
             {
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
                 GetKickChannelInfos(args, channel, channel.Slug, true);
             }
             catch (Exception ex)
@@ -283,6 +340,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if(username.StartsWith("@"))
                     username = username.Substring(1);
@@ -399,75 +459,96 @@ namespace Kick.Bot
             }
         }
 
-        public void AddChannelVip(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool AddChannelVip(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
 
-                Client.AddChannelVip(channel, username).Wait();
+                var result = Client.AddChannelVip(channel, username);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while adding a new VIP : {ex}");
+                return false;
             }
         }
 
-        public void RemoveChannelVip(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool RemoveChannelVip(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
 
-                Client.RemoveChannelVip(channel, username).Wait();
+                var result = Client.RemoveChannelVip(channel, username);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while removing a VIP : {ex}");
+                return false;
             }
         }
 
-        public void AddChannelOG(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool AddChannelOG(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
 
-                Client.AddChannelOG(channel, username).Wait();
+                var result = Client.AddChannelOG(channel, username);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while adding a new OG : {ex}");
+                return false;
             }
         }
 
-        public void RemoveChannelOG(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool RemoveChannelOG(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
 
-                Client.RemoveChannelOG(channel, username).Wait();
+                var result = Client.RemoveChannelOG(channel, username);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while removing an OG : {ex}");
+                return false;
             }
         }
 
@@ -477,6 +558,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
@@ -495,6 +579,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
@@ -507,12 +594,15 @@ namespace Kick.Bot
             }
         }
 
-        public void BanUser(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool BanUser(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
@@ -520,20 +610,26 @@ namespace Kick.Bot
                 if (!args.TryGetValue("banReason", out var banReason))
                     banReason = "";
 
-                Client.BanUser(channel, (string)username, (string)banReason).Wait();
+                var result = Client.BanUser(channel, (string)username, (string)banReason);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while banning a user : {ex}");
+                return false;
             }
         }
 
-        public void TimeoutUser(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool TimeoutUser(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
@@ -544,29 +640,39 @@ namespace Kick.Bot
                 if (!args.TryGetValue("banReason", out var banReason))
                     banReason = "";
 
-                Client.TimeoutUser(channel, (string)username, Convert.ToInt64(banDuration), (string)banReason).Wait();
+                var result = Client.TimeoutUser(channel, (string)username, Convert.ToInt64(banDuration),
+                    (string)banReason);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while temporarily banning a user : {ex}");
+                return false;
             }
         }
 
-        public void UnbanUser(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool UnbanUser(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
 
-                Client.UnbanUser(channel, (string)username).Wait();
+                var result = Client.UnbanUser(channel, (string)username);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
+                return false;
             }
         }
 
@@ -576,6 +682,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("pollTitle", out var title))
                     throw new Exception("missing argument, pollTitle required");
@@ -603,6 +712,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("title", out var title))
                     throw new Exception("missing argument, title required");
@@ -621,6 +733,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("category", out var category))
                     throw new Exception("missing argument, category required");
@@ -639,6 +754,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 Client.ClearChat(channel).Wait();
             }
@@ -654,6 +772,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 args.TryGetValue("title", out var title);
 
@@ -706,6 +827,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("enable", out var enable))
                 {
@@ -739,6 +863,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("enable", out var enable))
                 {
@@ -772,6 +899,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("enable", out var enable))
                 {
@@ -801,6 +931,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 int? duration = null;
                 if (args.TryGetValue("duration", out var rawDuration))
@@ -831,6 +964,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 int? interval = null;
                 if (args.TryGetValue("interval", out var rawInterval))
@@ -861,6 +997,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if(args.TryGetValue("channel", out var customChannel))
                 {
@@ -910,6 +1049,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("clipId", out var clipId))
                 {
@@ -925,12 +1067,15 @@ namespace Kick.Bot
             }
         }
 
-        public void PinMessage(Dictionary<string, dynamic> args, Channel channel)
+        public void PinMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("pinnableMessage", out var message))
                     throw new Exception("missing argument, message required");
@@ -947,12 +1092,15 @@ namespace Kick.Bot
             }
         }
 
-        public void UnpinMessage(Dictionary<string, dynamic> args, Channel channel)
+        public void UnpinMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 Client.UnpinMessage(channel).Wait();
             }
@@ -962,12 +1110,15 @@ namespace Kick.Bot
             }
         }
 
-        public void GetPinnedMessage(Dictionary<string, dynamic> args, Channel channel)
+        public void GetPinnedMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 var pinnedMessage = Client.GetPinnedMessage(channel).Result;
 
@@ -1016,12 +1167,15 @@ namespace Kick.Bot
             }
         }
 
-        public void GetUserStats(Dictionary<string, dynamic> args, Channel channel)
+        public void GetUserStats(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 string username;
                 var isSlug = false;
@@ -1137,6 +1291,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 var interval = 600;
                 if (args.TryGetValue("interval", out var intervalValue))
@@ -1177,6 +1334,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
+                
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
                 var channelInfos = Client.GetChannelInfos(channel.Slug).Result;
 

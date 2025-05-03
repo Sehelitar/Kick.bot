@@ -320,10 +320,10 @@ namespace Kick.API
             if (!IsAuthenticated)
                 throw new UnauthenticatedException();
 
-            var response = await ApiDelete<KickApiOperationResponse<VipUserEvent>>($"/api/v2/channels/{channel.Slug}/bans/{username}");
-            if (response.Status.Error)
+            var response = await ApiDelete<KickApiOperationSimpleResponse>($"/api/v2/channels/{channel.Slug}/bans/{username}");
+            if (!response.Status)
             {
-                throw new Exception(response.Status.Message);
+                throw new Exception(response.Message);
             }
         }
 

@@ -62,7 +62,14 @@ namespace Kick.Bot
 
             _eventListener.JoinAsync(Channel).Wait();
 
-            StreamerBotAppSettings.Load();
+            try
+            {
+                StreamerBotAppSettings.Load();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred while loading the bot settings : {ex}");
+            }
         }
 
         ~BotEventListener() {

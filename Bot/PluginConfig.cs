@@ -8,6 +8,8 @@ namespace Kick.Bot
         public delegate void OnLoginRequestedHandler(bool isBot);
         public event OnLoginRequestedHandler OnLoginRequested;
         
+        public event Action OnBroadcastSocketChangeRequested;
+        
         public PluginConfig()
         {
             InitializeComponent();
@@ -27,6 +29,11 @@ namespace Kick.Bot
         private void botLoginBtn_Click(object sender, EventArgs e)
         {
             OnLoginRequested?.Invoke(true);
+        }
+
+        private void broadcasterPusherDisconnect_Click(object sender, EventArgs e)
+        {
+            OnBroadcastSocketChangeRequested?.Invoke();
         }
     }
 }

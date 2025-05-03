@@ -196,6 +196,9 @@ namespace Kick.API
                             case "App\\Events\\PinnedMessageDeletedEvent":
                                 OnMessageUnpinned?.Invoke();
                                 return;
+                            default:
+                                Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PubChat] Unknown event triggered => {eventType} : {eventData}");
+                                break;
                         }
 
                         try
@@ -246,14 +249,7 @@ namespace Kick.API
                                 OnStreamEnded?.Invoke(endEvent);
                                 return;
                             default:
-                                try
-                                {
-                                    Console.WriteLine($@"[PUB-EVNT] {eventType} : {eventData.Data}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine($@"[PUB-EVNT] {eventType}, exception raised : {ex.Message}");
-                                }
+                                Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PubChannel] Unknown event triggered => {eventType} : {eventData}");
                                 return;
                         }
                     });
@@ -328,6 +324,15 @@ namespace Kick.API
                                 case "AllowLinksDeactivated":
                                     modeChanged = ChatMode.AllowLinksDeactivated;
                                     break;
+                                case "MessagePinned":
+                                    // ignored, duplicate
+                                    break;
+                                case "MessageUnpinned":
+                                    // ignored, duplicate
+                                    break;
+                                default:
+                                    Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PrivChatroom] Unknown event triggered => {eventType} : {eventData}");
+                                    break;
                             }
 
                             if (modeChanged.HasValue)
@@ -388,6 +393,9 @@ namespace Kick.API
                                     var newRedeem = JsonConvert.DeserializeObject<RewardRedeemedEvent>(eventData.Data);
                                     OnRewardRedeemed?.Invoke(newRedeem);
                                     return;
+                                default:
+                                    Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PrivChannel] Unknown event triggered => {eventType} : {eventData}");
+                                    break;
                             }
 
                             try
@@ -432,6 +440,9 @@ namespace Kick.API
                                         return;
                                     case "MatureModeDeactivated":
                                         return;
+                                    default:
+                                        Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PrivLivestream] Unknown event triggered => {eventType} : {eventData}");
+                                        break;
                                 }
 
                                 try
@@ -468,6 +479,9 @@ namespace Kick.API
                                         liveUpdate.Channel = channel;
                                         OnStreamUpdated?.Invoke(liveUpdate);
                                         return;
+                                    default:
+                                        Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PrivLivestream] Unknown event triggered => {eventType} : {eventData}");
+                                        break;
                                 }
 
                                 try
