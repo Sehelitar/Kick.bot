@@ -287,6 +287,7 @@ namespace Kick.API
             return response;
         }
 
+        #region Ban/Timeout
         public async Task<UserBanResult> BanUser(Channel channel, string username, string reason = "")
         {
             if (!IsAuthenticated)
@@ -326,6 +327,7 @@ namespace Kick.API
                 throw new Exception(response.Message);
             }
         }
+        #endregion
 
         public async Task ClearChat(Channel channel)
         {
@@ -391,6 +393,7 @@ namespace Kick.API
             return response.Data.Poll;
         }
 
+        #region Clips
         public async Task<Clip> MakeClip(Channel channel, int duration, string title = null, int? startTime = null)
         {
             if (!IsAuthenticated)
@@ -500,7 +503,9 @@ namespace Kick.API
             }
             return null;
         }
+        #endregion
 
+        #region Pinned Messages
         public async Task PinMessage(Channel channel, ChatMessageEvent message, int duration = 120)
         {
             if (!IsAuthenticated)
@@ -542,5 +547,133 @@ namespace Kick.API
             }
             return response.Data.PinnedMessage;
         }
+        #endregion
+        
+        #region Rewards
+        public async Task<Reward[]> GetRewardsList(Channel channel, bool enabledOnly = false)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var param = enabledOnly ? "?is_enabled=true" : string.Empty;
+            var response = await ApiGet<KickApiMessageOperationResponse<Reward[]>>($"/api/v2/channels/{channel.Slug}/rewards{param}");
+            if (response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data;
+        }
+        
+        public async Task<Reward> GetReward(Channel channel, string rewardId)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var response = await ApiGet<KickApiMessageOperationResponse<Reward>>($"/api/v2/channels/{channel.Slug}/rewards/{rewardId}");
+            if (response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data;
+        }
+        
+        public async Task<Reward> CreateReward(Channel channel, Reward reward)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "background_color", reward.BackgroundColor },
+                { "cost", reward.Cost },
+                { "description", reward.Description },
+                { "is_enabled", reward.IsEnabled },
+                { "is_paused", reward.IsPaused },
+                { "is_user_input_required", reward.IsUserInputRequired },
+                { "prompt", reward.Prompt },
+                { "should_redemptions_skip_request_queue", reward.ShouldRedemptionsSkipRequestQueue },
+                { "title", reward.Title },
+            };
+            var response = await ApiJsonPost<KickApiMessageOperationResponse<Reward>>($"/api/v2/channels/{channel.Slug}/rewards", data);
+            if (response.Message != "Created")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data;
+        }
+        
+        public async Task<Reward> UpdateReward(Channel channel, Reward reward)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var response = await ApiJsonPatch<KickApiMessageOperationResponse<Reward>>($"/api/v2/channels/{channel.Slug}/rewards/{reward.Id}", reward);
+            if (response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data;
+        }
+        
+        public async Task DeleteReward(Channel channel, string rewardId)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var response = await ApiDelete<KickApiMessageOperationResponse<dynamic>>($"/api/v2/channels/{channel.Slug}/rewards/{rewardId}");
+            if (response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+        }
+        
+        public async Task<Redemption[]> GetRedemptionsList(Channel channel, string rewardId = null)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var param = rewardId != null ? "?reward_id=" + rewardId : string.Empty;
+            var response = await ApiGet<KickApiMessageOperationResponse<RedemptionList>>($"/api/v2/channels/{channel.Slug}/redemptions{param}");
+            if (response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data.Redemptions;
+        }
+        
+        public async Task<string[]> AcceptRedemptions(Channel channel, string[] redemptionIds)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "redemption_ids", redemptionIds }
+            };
+            var response = await ApiJsonPost<KickApiMessageOperationResponse<FailedRedemptionsList>>($"/api/v2/channels/{channel.Slug}/redemptions/accept", data);
+            if (response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data.FailedRedemptionIds;
+        }
+        
+        public async Task<string[]> RejectRedemptions(Channel channel, string[] redemptionIds)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "redemption_ids", redemptionIds }
+            };
+            var response = await ApiJsonPost<KickApiMessageOperationResponse<FailedRedemptionsList>>($"/api/v2/channels/{channel.Slug}/redemptions/reject", data);
+            if (response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data.FailedRedemptionIds;
+        }
+        #endregion
     }
 }

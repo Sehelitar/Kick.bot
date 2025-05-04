@@ -112,6 +112,19 @@ namespace Kick.API
             return JsonConvert.DeserializeObject<T>(result);
         }
 
+        private async Task<T> ApiJsonPatch<T>(string endpoint, object payload)
+        {
+            var json = JsonConvert.SerializeObject(payload);
+            var target = ApiTarget(endpoint);
+            var jsPayload =
+                $@"return cookieStore.get('session_token').then(cookie => fetch( ""{target}"", {{ method: 'PATCH', headers: {{ 'Content-Type': 'application/json', 'Accept': 'application/json, text/plain, */*', 'Authorization': 'Bearer ' + decodeURIComponent(cookie.value) }}, body: JSON.stringify({json}) }} )).then(resp => resp.text()).catch(err => {{ console.log(err); return Promise.resolve(''); }});";
+
+            var result = await Browser.ExecuteAsyncFetch(endpoint, jsPayload);
+            if (result == string.Empty) // Try again
+                result = await Browser.ExecuteAsyncFetch(endpoint, jsPayload);
+            return JsonConvert.DeserializeObject<T>(result);
+        }
+        
         private async Task<T> ApiDelete<T>(string endpoint)
         {
             var target = ApiTarget(endpoint);
@@ -173,6 +186,14 @@ namespace Kick.API
             public T Data;
             [JsonProperty("status")]
             public KickApiOperationStatus Status { get; set; }
+        }
+        
+        internal class KickApiMessageOperationResponse<T>
+        {
+            [JsonProperty("data")]
+            public T Data;
+            [JsonProperty("message")]
+            public string Message { get; set; }
         }
         
         internal class KickApiOperationSimpleResponse

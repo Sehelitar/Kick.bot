@@ -552,7 +552,7 @@ namespace Kick.Bot
             }
         }
 
-        public void AddChannelModerator(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool AddChannelModerator(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -565,15 +565,18 @@ namespace Kick.Bot
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
 
-                Client.AddChannelModerator(channel, username).Wait();
+                var result = Client.AddChannelModerator(channel, username);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while adding a moderator : {ex}");
+                return false;
             }
         }
 
-        public void RemoveChannelModerator(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool RemoveChannelModerator(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -586,11 +589,14 @@ namespace Kick.Bot
                 if (!args.TryGetValue("user", out var username))
                     throw new Exception("missing argument, user required");
 
-                Client.RemoveChannelModerator(channel, username).Wait();
+                var result = Client.RemoveChannelModerator(channel, username);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while removing a moderator : {ex}");
+                return false;
             }
         }
 
@@ -1347,6 +1353,249 @@ namespace Kick.Bot
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
+            }
+        }
+        
+        public bool CreateReward(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                var reward = new Reward();
+                dynamic hold;
+                
+                if (!args.TryGetValue("rewardTitle", out hold))
+                    throw new Exception("missing argument, rewardTitle required");
+                reward.Title = hold.ToString();
+                
+                if (!args.TryGetValue("rewardDescription", out hold))
+                    throw new Exception("missing argument, rewardDescription required");
+                reward.Description = hold.ToString();
+                
+                if (!args.TryGetValue("rewardBackgroundColor", out hold))
+                    throw new Exception("missing argument, rewardBackgroundColor required");
+                reward.BackgroundColor = hold.ToString();
+                
+                if (!args.TryGetValue("rewardCost", out hold))
+                    throw new Exception("missing argument, rewardCost required");
+                reward.Cost = Convert.ToInt64(hold);
+                
+                if (args.TryGetValue("rewardEnabled", out hold))
+                    reward.IsEnabled = Convert.ToBoolean(hold);
+                else
+                    reward.IsEnabled = true;
+                
+                if (args.TryGetValue("rewardPaused", out hold))
+                    reward.IsPaused = Convert.ToBoolean(hold);
+                else
+                    reward.IsPaused = false;
+                
+                if (args.TryGetValue("rewardUserInputRequired", out hold))
+                    reward.IsUserInputRequired = Convert.ToBoolean(hold);
+                else
+                    reward.IsUserInputRequired = false;
+
+                if (reward.IsUserInputRequired)
+                {
+                    if (!args.TryGetValue("rewardPrompt", out hold))
+                        throw new Exception("missing argument, rewardPrompt required");
+                    reward.Prompt = hold.ToString();
+                }
+                else
+                {
+                    reward.Prompt = "";
+                }
+
+                if (args.TryGetValue("rewardRedemptionSkipQueue", out hold))
+                    reward.ShouldRedemptionsSkipRequestQueue = Convert.ToBoolean(hold);
+                else
+                    reward.ShouldRedemptionsSkipRequestQueue = false;
+
+                var result = Client.CreateReward(channel, reward);
+                result.Wait();
+                var success = result.Status == TaskStatus.RanToCompletion;
+                if (success)
+                {
+                    CPH.SetArgument("rewardId", result.Id);
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
+                return false;
+            }
+        }
+        
+        public bool UpdateReward(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                dynamic hold;
+                
+                if (!args.TryGetValue("rewardId", out hold))
+                    throw new Exception("missing argument, rewardTitle required");
+                
+                var reward = Client.GetReward(channel, Convert.ToInt64(hold)).Result;
+                
+                if (args.TryGetValue("rewardTitle", out hold))
+                    reward.Title = hold.ToString();
+                
+                if (args.TryGetValue("rewardDescription", out hold))
+                    reward.Description = hold.ToString();
+                
+                if (args.TryGetValue("rewardBackgroundColor", out hold))
+                    reward.BackgroundColor = hold.ToString();
+                
+                if (args.TryGetValue("rewardCost", out hold))
+                    reward.Cost = Convert.ToInt64(hold);
+                
+                if (args.TryGetValue("rewardEnabled", out hold))
+                    reward.IsEnabled = Convert.ToBoolean(hold);
+                
+                if (args.TryGetValue("rewardPaused", out hold))
+                    reward.IsPaused = Convert.ToBoolean(hold);
+                
+                if (args.TryGetValue("rewardUserInputRequired", out hold))
+                    reward.IsUserInputRequired = Convert.ToBoolean(hold);
+
+                if (reward.IsUserInputRequired)
+                {
+                    if (args.TryGetValue("rewardPrompt", out hold))
+                        reward.Prompt = hold.ToString();
+                }
+
+                if (args.TryGetValue("rewardRedemptionSkipQueue", out hold))
+                    reward.ShouldRedemptionsSkipRequestQueue = Convert.ToBoolean(hold);
+                
+                var result = Client.UpdateReward(channel, reward);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
+                return false;
+            }
+        }
+        
+        public bool DeleteReward(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("rewardId", out var hold))
+                    throw new Exception("missing argument, rewardTitle required");
+                
+                var result = Client.DeleteReward(channel, Convert.ToInt64(hold));
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
+                return false;
+            }
+        }
+        
+        public bool GetRedemptionsList(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                dynamic hold = null;
+                args.TryGetValue("rewardId", out hold);
+
+                var result = Client.GetRedemptionsList(channel, hold);
+                result.Wait();
+                var success = result.Status == TaskStatus.RanToCompletion;
+                if (!success) return false;
+                
+                CPH.SetArgument("redemptionsCount", result.Result.Length);
+                CPH.SetArgument("redemptions", result.Result);
+                Redemption[] redemptions = result.Result;
+                for (var i = 0; i < redemptions.Length; ++i)
+                {
+                    var redemption = redemptions[i];
+                    CPH.SetArgument($"redemption{i}Id", redemption.Id);
+                    CPH.SetArgument($"redemption{i}RewardId", redemption.RewardId);
+                    CPH.SetArgument($"redemption{i}RewardTitle", redemption.RewardTitle);
+                    CPH.SetArgument($"redemption{i}TransactionId", redemption.TransactionId);
+                    CPH.SetArgument($"redemption{i}UserId", redemption.UserId);
+                    CPH.SetArgument($"redemption{i}Username", redemption.Username);
+                    CPH.SetArgument($"redemption{i}UsernameColor", redemption.UsernameColor);
+                    CPH.SetArgument($"redemption{i}Status", redemption.Status);
+                    CPH.SetArgument($"redemption{i}ChannelId", redemption.ChannelId);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] APIError : {ex}");
+                return false;
+            }
+        }
+        
+        public bool AcceptRedemption(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("redemptionId", out var hold))
+                    throw new Exception("missing argument, redemptionId required");
+                
+                var result = Client.AcceptRedemptions(channel, new string[] { Convert.ToString(hold) });
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] APIError : {ex}");
+                return false;
+            }
+        }
+        
+        public bool RejectRedemption(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("redemptionId", out var hold))
+                    throw new Exception("missing argument, redemptionId required");
+                
+                var result = Client.RejectRedemptions(channel, new string[] { Convert.ToString(hold) });
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] APIError : {ex}");
+                return false;
             }
         }
     }
