@@ -48,7 +48,9 @@ namespace Kick.API.Models
         [JsonProperty("phone")]
         public string Phone { get; internal set; }
         [JsonProperty("profile_pic")]
-        public string ProfilePic { get; internal set; } = string.Empty;
+        public string ProfilePic { get; internal set; }
+        [JsonProperty("profilepic")]
+        public string ProfilePicAlt { get; internal set; }
         [JsonProperty("redirect")]
         public string Redirect { get; internal set; } = string.Empty;
         [JsonProperty("state")]

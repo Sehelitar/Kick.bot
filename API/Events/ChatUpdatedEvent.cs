@@ -16,6 +16,8 @@ namespace Kick.API.Events
         public ChatUpdatedToggle EmotesMode { get; internal set; }
         [JsonProperty("advanced_bot_protection")]
         public AdvancedBotProtectionSettings AdvancedBotProtection { get; internal set; }
+        [JsonProperty("account_age")]
+        public ChatUpdatedAccountAge AccountAge { get; internal set; }
     }
 
     public class ChatUpdatedToggle
@@ -40,5 +42,11 @@ namespace Kick.API.Events
     {
         [JsonProperty("remaining_time")]
         public long RemainingTime { get; internal set; }
+    }
+    
+    public class ChatUpdatedAccountAge : ChatUpdatedToggle
+    {
+        [JsonProperty("min_duration")]
+        public long MinDuration { get; internal set; }
     }
 }

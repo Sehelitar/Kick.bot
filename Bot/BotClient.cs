@@ -109,17 +109,20 @@ namespace Kick.Bot
             CPH.LogDebug("[Kick] Extension is shuting down");
         }
 
-        public void OpenConfig()
+        public static bool OpenConfig()
         {
             Task.Run(() => GlobalPluginUi.OpenConfig());
+            return true;
         }
 
+        // @deprecated
         public void BeginBroadcasterAuthentication()
         {
             CPH.LogDebug("[Kick] Begin broadcaster authentication...");
             Client.Browser.BeginAuthentication();
         }
         
+        // @deprecated
         public void BeginBotAuthentication()
         {
             CPH.LogDebug("[Kick] Begin bot authentication...");
@@ -295,8 +298,28 @@ namespace Kick.Bot
                 return false;
             }
         }
+        
+        public bool ClearChat(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
 
-        public void GetUserInfos(Dictionary<string, dynamic> args, Channel channel)
+                var result = Client.ClearChat(channel);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while clearing chat : {ex}");
+                return false;
+            }
+        }
+
+        public bool GetUserInfos(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -304,37 +327,38 @@ namespace Kick.Bot
                     channel = BroadcasterListener.Channel;
                 
                 if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != String.Empty)
-                    GetKickChannelInfos(args, channel, Convert.ToString(userName), true);
-                else if (args.TryGetValue("targetUser", out var user) && user != null && user != String.Empty)
-                    GetKickChannelInfos(args, channel, Convert.ToString(user));
-                else if (args.TryGetValue("userName", out userName) && userName != null && userName != String.Empty)
-                    GetKickChannelInfos(args, channel, Convert.ToString(userName) , true);
-                else if (args.TryGetValue("user", out user) && user != null && user != String.Empty)
-                    GetKickChannelInfos(args, channel, Convert.ToString(user));
-                else
-                    GetKickChannelInfos(args, channel, channel.Slug, true);
+                    return GetKickChannelInfos(args, channel, Convert.ToString(userName), true);
+                if (args.TryGetValue("targetUser", out var user) && user != null && user != String.Empty)
+                    return GetKickChannelInfos(args, channel, Convert.ToString(user));
+                if (args.TryGetValue("userName", out userName) && userName != null && userName != String.Empty)
+                    return GetKickChannelInfos(args, channel, Convert.ToString(userName) , true);
+                if (args.TryGetValue("user", out user) && user != null && user != String.Empty)
+                    return GetKickChannelInfos(args, channel, Convert.ToString(user));
+                return GetKickChannelInfos(args, channel, channel.Slug, true);
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while fetching user infos : {ex}");
+                return false;
             }
         }
 
-        public void GetBroadcasterInfos(Dictionary<string, dynamic> args, Channel channel)
+        public bool GetBroadcasterInfos(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
-                GetKickChannelInfos(args, channel, channel.Slug, true);
+                return GetKickChannelInfos(args, channel, channel.Slug, true);
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while fetching broadcaster infos : {ex}");
+                return false;
             }
         }
 
-        private void GetKickChannelInfos(Dictionary<string, dynamic> args, Channel channel, string username, bool isSlug = false)
+        private bool GetKickChannelInfos(Dictionary<string, dynamic> args, Channel channel, string username, bool isSlug = false)
         {
             try
             {
@@ -360,6 +384,9 @@ namespace Kick.Bot
                     userInfos = Client.GetChannelUserInfos(channel.Slug, username).Result;
                     channelInfos = Client.GetChannelInfos(userInfos.Slug).Result;
                 }
+
+                if (channelInfos == null || userInfos == null)
+                    return false;
 
                 UserActivity extraUser = null;
                 try
@@ -452,13 +479,17 @@ namespace Kick.Bot
                     CPH.SetArgument("game", latestCategory.Name);
                     CPH.SetArgument("gameId", latestCategory.Id);
                 }
+
+                return true;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while fetching channel infos : {ex}");
+                return false;
             }
         }
 
+        #region Channel Roles
         public bool AddChannelVip(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
@@ -599,7 +630,9 @@ namespace Kick.Bot
                 return false;
             }
         }
+        #endregion
 
+        #region Ban / Timeout
         public bool BanUser(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
@@ -681,8 +714,10 @@ namespace Kick.Bot
                 return false;
             }
         }
-
-        public void StartPoll(Dictionary<string, dynamic> args, Channel channel = null)
+        #endregion
+        
+        #region Polls
+        public bool StartPoll(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -704,75 +739,52 @@ namespace Kick.Bot
                 if (!args.TryGetValue("pollChoices", out var choices))
                     throw new Exception("missing argument, pollChoices required");
 
-                Client.StartPoll(channel, (string)title, ((string)choices).Split('|'), Convert.ToInt32(duration), Convert.ToInt32(displayTime)).Wait();
+                var result = Client.StartPoll(channel, (string)title, ((string)choices).Split('|'), Convert.ToInt32(duration), Convert.ToInt32(displayTime));
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while starting a new poll : {ex}");
+                return false;
             }
         }
-
-        public void ChangeTitle(Dictionary<string, dynamic> args, Channel channel = null)
+        #endregion
+        
+        #region Live Settings
+        public bool ChangeStreamInfo(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
-                
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("title", out var title))
-                    throw new Exception("missing argument, title required");
+                var streamInfo = Client.GetStreamInfo(channel).Result;
 
-                Client.SetChannelTitle(channel, (string)title).Wait();
+                if (args.TryGetValue("title", out var title))
+                    streamInfo.StreamTitle = (string)title;
+                if (args.TryGetValue("category", out var category))
+                {
+                    var bestCategory = Client.FindClosestStreamCategory(category).Result as StreamCategory;
+                    streamInfo.Category = bestCategory;
+                }
+
+                var result = Client.SetStreamInfo(channel, streamInfo);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while changing stream title : {ex}");
+                return false;
             }
         }
-
-        public void ChangeCategory(Dictionary<string, dynamic> args, Channel channel = null)
-        {
-            try
-            {
-                if (AuthenticatedUser == null)
-                    throw new Exception("authentication required");
-                
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
-
-                if (!args.TryGetValue("category", out var category))
-                    throw new Exception("missing argument, category required");
-
-                Client.SetChannelCategory(channel, (string)category).Wait();
-            }
-            catch (Exception ex)
-            {
-                CPH.LogDebug($"[Kick] An error occurred while changing stream category : {ex}");
-            }
-        }
-
-        public void ClearChat(Dictionary<string, dynamic> args, Channel channel = null)
-        {
-            try
-            {
-                if (AuthenticatedUser == null)
-                    throw new Exception("authentication required");
-                
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
-
-                Client.ClearChat(channel).Wait();
-            }
-            catch (Exception ex)
-            {
-                CPH.LogDebug($"[Kick] An error occurred while clearing chat : {ex}");
-            }
-        }
-
-        public void MakeClip(Dictionary<string, dynamic> args, Channel channel = null)
+        #endregion
+        
+        #region Clips
+        public bool MakeClip(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -806,15 +818,22 @@ namespace Kick.Bot
                 var startTime = maxDuration - duration;
 
                 // Update channel infos to have fresh livestream data
-                if (channel == null) return;
+                if (channel == null) return false;
                 channel = Client.GetChannelInfos(channel.Slug).Result;
+                
                 try
                 {
-                    var clip = Client.MakeClip(channel, Convert.ToInt32(duration), (string)title, startTime).Result;
-                    CPH.SetArgument("createClipSuccess", true);
-                    CPH.SetArgument("createClipId", clip.Id);
-                    CPH.SetArgument("createClipCreatedAt", DateTime.Now);
-                    CPH.SetArgument("createClipUrl", $"https://kick.com/{channel.Slug}?clip={clip.Id}");
+                    var result = Client.MakeClip(channel, Convert.ToInt32(duration), (string)title, startTime);
+                    result.Wait();
+                    if (result.Status == TaskStatus.RanToCompletion)
+                    {
+                        var clip = result.Result;
+                        CPH.SetArgument("createClipSuccess", true);
+                        CPH.SetArgument("createClipId", clip.Id);
+                        CPH.SetArgument("createClipCreatedAt", DateTime.Now);
+                        CPH.SetArgument("createClipUrl", $"https://kick.com/{channel.Slug}?clip={clip.Id}");
+                        return true;
+                    }
                 }
                 catch
                 {
@@ -825,179 +844,11 @@ namespace Kick.Bot
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to create to clip : {ex}");
             }
+
+            return false;
         }
-
-        public void ChatEmotesOnly(Dictionary<string, dynamic> args, Channel channel = null)
-        {
-            try
-            {
-                if (AuthenticatedUser == null)
-                    throw new Exception("authentication required");
-                
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
-
-                if (!args.TryGetValue("enable", out var enable))
-                {
-                    if (channel != null)
-                    {
-                        channel = Client.GetChannelInfos(channel.Slug).Result;
-                        enable = !channel.Chatroom.IsEmotesOnly;
-                    }
-                }
-
-                ChatUpdatedEvent updated = Client.SetChannelChatroomEmotesOnly(channel, enable).Result;
-
-                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
-                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
-                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
-                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
-                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
-                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
-                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
-                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
-            }
-            catch (Exception ex)
-            {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
-            }
-        }
-
-        public void ChatSubsOnly(Dictionary<string, dynamic> args, Channel channel = null)
-        {
-            try
-            {
-                if (AuthenticatedUser == null)
-                    throw new Exception("authentication required");
-                
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
-
-                if (!args.TryGetValue("enable", out var enable))
-                {
-                    if (channel != null)
-                    {
-                        channel = Client.GetChannelInfos(channel.Slug).Result;
-                        enable = !channel.Chatroom.IsSubOnly;
-                    }
-                }
-
-                ChatUpdatedEvent updated = Client.SetChannelChatroomSubscribersOnly(channel, enable).Result;
-
-                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
-                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
-                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
-                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
-                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
-                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
-                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
-                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
-            }
-            catch (Exception ex)
-            {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
-            }
-        }
-
-        public void ChatBotProtection(Dictionary<string, dynamic> args, Channel channel = null)
-        {
-            try
-            {
-                if (AuthenticatedUser == null)
-                    throw new Exception("authentication required");
-                
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
-
-                if (!args.TryGetValue("enable", out var enable))
-                {
-                    enable = true;
-                }
-
-                ChatUpdatedEvent updated = Client.SetChannelChatroomBotProtection(channel, enable).Result;
-
-                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
-                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
-                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
-                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
-                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
-                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
-                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
-                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
-            }
-            catch (Exception ex)
-            {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat protection : {ex}");
-            }
-        }
-
-        public void ChatFollowersOnly(Dictionary<string, dynamic> args, Channel channel = null)
-        {
-            try
-            {
-                if (AuthenticatedUser == null)
-                    throw new Exception("authentication required");
-                
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
-
-                int? duration = null;
-                if (args.TryGetValue("duration", out var rawDuration))
-                {
-                    duration = Math.Min(Convert.ToInt32(rawDuration), 600); // Kick limite à 10h (600 minutes) max
-                }
-
-                ChatUpdatedEvent updated = Client.SetChannelChatroomFollowersMode(channel, duration).Result;
-
-                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
-                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
-                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
-                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
-                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
-                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
-                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
-                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
-            }
-            catch (Exception ex)
-            {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
-            }
-        }
-
-        public void ChatSlowMode(Dictionary<string, dynamic> args, Channel channel = null)
-        {
-            try
-            {
-                if (AuthenticatedUser == null)
-                    throw new Exception("authentication required");
-                
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
-
-                int? interval = null;
-                if (args.TryGetValue("interval", out var rawInterval))
-                {
-                    interval = Math.Min(Convert.ToInt32(rawInterval), 300); // Kick limite l'intervale à 5 minutes (300 secondes)
-                }
-
-                ChatUpdatedEvent updated = Client.SetChannelChatroomSlowMode(channel, interval).Result;
-
-                CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
-                CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
-                CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
-                CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
-                CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
-                CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
-                CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
-                CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
-            }
-            catch (Exception ex)
-            {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
-            }
-        }
-
-        public void GetClips(Dictionary<string, dynamic> args, Channel channel)
+        
+        public bool GetClips(Dictionary<string, dynamic> args, Channel channel)
         {
             try
             {
@@ -1031,25 +882,152 @@ namespace Kick.Bot
                     timeRange = rawTimeRange;
                 }
 
-                var clips = Client.GetLatestClips(channel, count, orderBy, timeRange).Result;
-
-                for(int i = 0; i < clips.Count; i++)
+                var result = Client.GetLatestClips(channel, count, orderBy, timeRange);
+                result.Wait();
+                if (result.Status == TaskStatus.RanToCompletion)
                 {
-                    var clip = clips[i];
-                    CPH.SetArgument($"clip{i}.id", clip.Id);
-                    CPH.SetArgument($"clip{i}.title", clip.Title);
-                    CPH.SetArgument($"clip{i}.preview", clip.ThumbnailUrl);
-                    CPH.SetArgument($"clip{i}.video", clip.ClipUrl);
-                    CPH.SetArgument($"clip{i}.link", $"https://kick.com/{channel.Slug}?clip={clip.Id}");
+                    var clips = result.Result;
+
+                    for (int i = 0; i < clips.Count; i++)
+                    {
+                        var clip = clips[i];
+                        CPH.SetArgument($"clip{i}.id", clip.Id);
+                        CPH.SetArgument($"clip{i}.title", clip.Title);
+                        CPH.SetArgument($"clip{i}.preview", clip.ThumbnailUrl);
+                        CPH.SetArgument($"clip{i}.video", clip.ClipUrl);
+                        CPH.SetArgument($"clip{i}.link", $"https://kick.com/{channel.Slug}?clip={clip.Id}");
+                    }
+
+                    return true;
                 }
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
             }
+
+            return false;
         }
 
-        public void GetClipMP4URL(Dictionary<string, dynamic> args, Channel channel)
+        public bool GetClipVideoUrl(Dictionary<string, dynamic> args, Channel channel)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("clipId", out var clipId))
+                {
+                    throw new Exception("authentication required");
+                }
+
+                var result = Client.GetClipMp4Url(clipId);
+                result.Wait();
+                if (result.Status == TaskStatus.RanToCompletion)
+                {
+                    CPH.SetArgument($"clipLink", result.Result);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to fetch clip URL : {ex}");
+            }
+
+            return false;
+        }
+        #endregion
+
+        #region Chatroom Modes
+        public bool ChatEmotesOnly(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("enable", out var enable))
+                {
+                    if (channel != null)
+                    {
+                        channel = Client.GetChannelInfos(channel.Slug).Result;
+                        enable = !channel.Chatroom.IsEmotesOnly;
+                    }
+                }
+
+                var result = Client.SetChannelChatroomEmotesOnly(channel, enable);
+                result.Wait();
+                if (result.Status == TaskStatus.RanToCompletion)
+                {
+                    var updated = result.Result;
+                    CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                    CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                    CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                    CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                    CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                    CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                    CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                    CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+                    CPH.SetArgument("chatBotAccountAgeSince", updated.AccountAge.MinDuration);
+                    CPH.SetArgument("chatBotAccountAgeRequired", updated.AccountAge.Enabled);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+            }
+            return false;
+        }
+
+        public bool ChatSubsOnly(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("enable", out var enable))
+                {
+                    if (channel != null)
+                    {
+                        channel = Client.GetChannelInfos(channel.Slug).Result;
+                        enable = !channel.Chatroom.IsSubOnly;
+                    }
+                }
+
+                var result = Client.SetChannelChatroomSubscribersOnly(channel, enable);
+                result.Wait();
+                if (result.Status == TaskStatus.RanToCompletion)
+                {
+                    var updated = result.Result;
+                    CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                    CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                    CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                    CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                    CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                    CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                    CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                    CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+                    CPH.SetArgument("chatBotAccountAgeSince", updated.AccountAge.MinDuration);
+                    CPH.SetArgument("chatBotAccountAgeRequired", updated.AccountAge.Enabled);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+            }
+            return false;
+        }
+
+        public bool ChatBotProtection(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -1059,21 +1037,157 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("clipId", out var clipId))
+                if (!args.TryGetValue("enable", out var enable))
                 {
-                    return;
+                    enable = true;
                 }
 
-                var clipUrl = Client.GetClipMp4Url(clipId).Result;
-                CPH.SetArgument($"clipLink", clipUrl);
+                var result = Client.SetChannelChatroomBotProtection(channel, enable);
+                result.Wait();
+                if (result.Status == TaskStatus.RanToCompletion)
+                {
+                    var updated = result.Result;
+                    CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                    CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                    CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                    CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                    CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                    CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                    CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                    CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+                    CPH.SetArgument("chatBotAccountAgeSince", updated.AccountAge.MinDuration);
+                    CPH.SetArgument("chatBotAccountAgeRequired", updated.AccountAge.Enabled);
+                    return true;
+                }
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch clip URL : {ex}");
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat protection : {ex}");
             }
+            return false;
         }
 
-        public void PinMessage(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool ChatFollowersOnly(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                int? duration = null;
+                if (args.TryGetValue("duration", out var rawDuration))
+                {
+                    duration = Math.Min(Convert.ToInt32(rawDuration), 525960); // Kick has a 1-year limit
+                }
+
+                var result = Client.SetChannelChatroomFollowersMode(channel, duration);
+                result.Wait();
+                if(result.Status == TaskStatus.RanToCompletion) {
+                    var updated = result.Result;
+                    CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                    CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                    CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                    CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                    CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                    CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                    CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                    CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+                    CPH.SetArgument("chatBotAccountAgeSince", updated.AccountAge.MinDuration);
+                    CPH.SetArgument("chatBotAccountAgeRequired", updated.AccountAge.Enabled);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+            }
+            return false;
+        }
+
+        public bool ChatSlowMode(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if (channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                int? interval = null;
+                if (args.TryGetValue("interval", out var rawInterval))
+                {
+                    interval = Math.Min(Convert.ToInt32(rawInterval), 300); // Kick has a 5-minutes limit
+                }
+
+                var result = Client.SetChannelChatroomSlowMode(channel, interval);
+                result.Wait();
+                if (result.Status == TaskStatus.RanToCompletion)
+                {
+                    var updated = result.Result;
+                    CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                    CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                    CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                    CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                    CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                    CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                    CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                    CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+                    CPH.SetArgument("chatBotAccountAgeSince", updated.AccountAge.MinDuration);
+                    CPH.SetArgument("chatBotAccountAgeRequired", updated.AccountAge.Enabled);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+            }
+            return false;
+        }
+
+        public bool ChatAccountAge(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                int? duration = null;
+                if (args.TryGetValue("duration", out var rawDuration))
+                {
+                    duration = Convert.ToInt32(rawDuration);
+                }
+
+                var result = Client.SetChannelChatroomAccountAge(channel, duration);
+                result.Wait();
+                if(result.Status == TaskStatus.RanToCompletion) {
+                    var updated = result.Result;
+                    CPH.SetArgument("chatEmotesOnly", updated.EmotesMode.Enabled);
+                    CPH.SetArgument("chatFollowersOnly", updated.FollowersMode.Enabled);
+                    CPH.SetArgument("chatFollowersSince", updated.FollowersMode.MinDuration);
+                    CPH.SetArgument("chatSlowMode", updated.SlowMode.Enabled);
+                    CPH.SetArgument("chatSlowModeInterval", updated.SlowMode.MessageInterval);
+                    CPH.SetArgument("chatSubsOnly", updated.SubscribersMode.Enabled);
+                    CPH.SetArgument("chatBotProtection", updated.AdvancedBotProtection.Enabled);
+                    CPH.SetArgument("chatBotProtectionRemaining", updated.AdvancedBotProtection.RemainingTime);
+                    CPH.SetArgument("chatBotAccountAgeSince", updated.AccountAge.MinDuration);
+                    CPH.SetArgument("chatBotAccountAgeRequired", updated.AccountAge.Enabled);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+            }
+            return false;
+        }
+        #endregion
+
+        #region Pinned Messages
+        public bool PinMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -1090,15 +1204,18 @@ namespace Kick.Bot
                     duration = 120;
 
                 var originalMessage = Newtonsoft.Json.JsonConvert.DeserializeObject<ChatMessageEvent>(message);
-                Client.PinMessage(channel, originalMessage, duration).Wait();
+                var result = Client.PinMessage(channel, originalMessage, duration);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                return false;
             }
         }
 
-        public void UnpinMessage(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool UnpinMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -1108,72 +1225,82 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                Client.UnpinMessage(channel).Wait();
+                var result = Client.UnpinMessage(channel);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to unpin a message : {ex}");
+                return false;
             }
         }
 
-        public void GetPinnedMessage(Dictionary<string, dynamic> args, Channel channel = null)
+        public bool GetPinnedMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
-                
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                var pinnedMessage = Client.GetPinnedMessage(channel).Result;
-
-                var emoteRe = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
-                var messageStripped = emoteRe.Replace(pinnedMessage.Message.Content, "");
-                var emotes = emoteRe.Matches(pinnedMessage.Message.Content);
-                var emotesList = new List<string>();
-                for (var i = 0; i < emotes.Count; ++i)
+                var result = Client.GetPinnedMessage(channel);
+                result.Wait();
+                if (result.Status == TaskStatus.RanToCompletion)
                 {
-                    emotesList.Add(emotes[i].Value);
+                    var pinnedMessage = result.Result;
+
+                    var emoteRe = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
+                    var messageStripped = emoteRe.Replace(pinnedMessage.Message.Content, "");
+                    var emotes = emoteRe.Matches(pinnedMessage.Message.Content);
+                    var emotesList = new List<string>();
+                    for (var i = 0; i < emotes.Count; ++i)
+                    {
+                        emotesList.Add(emotes[i].Value);
+                    }
+
+                    var role = 1;
+                    if (pinnedMessage.Message.Sender.IsVip)
+                        role = 2;
+                    if (pinnedMessage.Message.Sender.IsModerator)
+                        role = 3;
+                    if (pinnedMessage.Message.Sender.IsBroadcaster)
+                        role = 4;
+
+                    CPH.SetArgument("user", pinnedMessage.Message.Sender.Username);
+                    CPH.SetArgument("userName", pinnedMessage.Message.Sender.Slug);
+                    CPH.SetArgument("userId", pinnedMessage.Message.Sender.Id);
+                    CPH.SetArgument("userType", "kick");
+                    CPH.SetArgument("isSubscribed", pinnedMessage.Message.Sender.IsSubscriber);
+                    CPH.SetArgument("isModerator", pinnedMessage.Message.Sender.IsModerator);
+                    CPH.SetArgument("isVip", pinnedMessage.Message.Sender.IsVip);
+
+                    CPH.SetArgument("msgId", pinnedMessage.Message.Id);
+                    CPH.SetArgument("chatroomId", pinnedMessage.Message.ChatroomId);
+                    CPH.SetArgument("role", role);
+                    CPH.SetArgument("color", pinnedMessage.Message.Sender.Identity.Color);
+                    CPH.SetArgument("message", pinnedMessage.Message.Content);
+                    CPH.SetArgument("emoteCount", emotes.Count);
+                    CPH.SetArgument("emotes", string.Join(",", emotesList));
+                    CPH.SetArgument("messageStripped", messageStripped);
+                    CPH.SetArgument("messageCheermotesStripped", messageStripped);
+                    CPH.SetArgument("isHighlight", false);
+                    CPH.SetArgument("bits", 0);
+                    CPH.SetArgument("isAction", false);
+                    CPH.SetArgument("isReply", pinnedMessage.Message.IsReply);
+                    return true;
                 }
-
-                var role = 1;
-                if (pinnedMessage.Message.Sender.IsVip)
-                    role = 2;
-                if (pinnedMessage.Message.Sender.IsModerator)
-                    role = 3;
-                if (pinnedMessage.Message.Sender.IsBroadcaster)
-                    role = 4;
-
-                CPH.SetArgument("user", pinnedMessage.Message.Sender.Username);
-                CPH.SetArgument("userName", pinnedMessage.Message.Sender.Slug);
-                CPH.SetArgument("userId", pinnedMessage.Message.Sender.Id);
-                CPH.SetArgument("userType", "kick");
-                CPH.SetArgument("isSubscribed", pinnedMessage.Message.Sender.IsSubscriber);
-                CPH.SetArgument("isModerator", pinnedMessage.Message.Sender.IsModerator);
-                CPH.SetArgument("isVip", pinnedMessage.Message.Sender.IsVip);
-                
-                CPH.SetArgument("msgId", pinnedMessage.Message.Id);
-                CPH.SetArgument("chatroomId", pinnedMessage.Message.ChatroomId);
-                CPH.SetArgument("role", role);
-                CPH.SetArgument("color", pinnedMessage.Message.Sender.Identity.Color);
-                CPH.SetArgument("message", pinnedMessage.Message.Content);
-                CPH.SetArgument("emoteCount", emotes.Count);
-                CPH.SetArgument("emotes", string.Join(",", emotesList));
-                CPH.SetArgument("messageStripped", messageStripped);
-                CPH.SetArgument("messageCheermotesStripped", messageStripped);
-                CPH.SetArgument("isHighlight", false);
-                CPH.SetArgument("bits", 0);
-                CPH.SetArgument("isAction", false);
-                CPH.SetArgument("isReply", pinnedMessage.Message.IsReply);
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to fetch pinned message : {ex}");
             }
+            return false;
         }
-
-        public void GetUserStats(Dictionary<string, dynamic> args, Channel channel = null)
+        #endregion
+        
+        public bool GetUserStats(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
@@ -1230,7 +1357,8 @@ namespace Kick.Bot
                 if(!userInfos.FollowingSince.HasValue)
                 {
                     // No follow date => Do nothing
-                    return;
+                    CPH.SetArgument("isFollowing", false);
+                    return true;
                 }
 
                 var timeDiff = DateTime.Now - userInfos.FollowingSince;
@@ -1275,6 +1403,7 @@ namespace Kick.Bot
                         .ToString();
                 }
 
+                CPH.SetArgument("isFollowing", true);
                 CPH.SetArgument("followDate", userInfos.FollowingSince);
                 CPH.SetArgument("followAgeLong", timeLong);
                 CPH.SetArgument("followAgeShort", timeShort);
@@ -1284,20 +1413,21 @@ namespace Kick.Bot
                 CPH.SetArgument("followUser", userInfos.Username);
                 CPH.SetArgument("followUserName", userInfos.Slug);
                 CPH.SetArgument("followUserId", userInfos.Id);
+                return true;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to fetch follower infos : {ex}");
+                return false;
             }
         }
 
-        public void PickRandomActiveUser(Dictionary<string, dynamic> args, Channel channel)
+        public bool PickRandomActiveUser(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
-                
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
@@ -1327,35 +1457,43 @@ namespace Kick.Bot
                         }
                     }
                 }
+                
+                return true;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to fetch a random active user : {ex}");
+                return false;
             }
         }
 
-        public void GetChannelCounters(Dictionary<string, dynamic> args, Channel channel)
+        public bool GetChannelCounters(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
-                
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                var channelInfos = Client.GetChannelInfos(channel.Slug).Result;
-
+                var result = Client.GetChannelInfos(channel.Slug);
+                result.Wait();
+                if (result.Status != TaskStatus.RanToCompletion) return false;
+                
+                var channelInfos = result.Result;
                 CPH.SetArgument("followerCount", channelInfos.FollowersCount);
-                if(channelInfos.LiveStream != null)
+                if (channelInfos.LiveStream != null)
                     CPH.SetArgument("viewerCount", channelInfos.LiveStream.ViewerCount);
+                return true;
             }
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
+                return false;
             }
         }
         
+        #region Rewards
         public bool CreateReward(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
@@ -1598,5 +1736,6 @@ namespace Kick.Bot
                 return false;
             }
         }
+        #endregion
     }
 }

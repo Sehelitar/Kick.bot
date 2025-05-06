@@ -51,6 +51,7 @@ namespace Kick.API
             return await ApiGet<User>("/api/v1/user");
         }
 
+        #region Chat / Utils
         /// <summary>
         /// Send a chat message to a chatroom.
         /// </summary>
@@ -126,6 +127,29 @@ namespace Kick.API
             return true;
         }
 
+        private async Task<ChatCommandResult> SendChatCommand(Channel channel, ChatCommand command)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+
+            var response = await ApiJsonPost<ChatCommandResult>($"/api/v2/channels/{channel.Slug}/chat-commands", command);
+            if (response == null)
+            {
+                throw new Exception("Chat command failed");
+            }
+            return response;
+        }
+        
+        public async Task ClearChat(Channel channel)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+
+            await SendChatCommand(channel, new ChatCommand("clear", null));
+        }
+        #endregion
+        
+        #region Chatroom Modes
         public async Task<ChatUpdatedEvent> SetChannelChatroomEmotesOnly(Channel channel, bool enable)
         {
             if (!IsAuthenticated)
@@ -195,7 +219,23 @@ namespace Kick.API
             }
             return response;
         }
+        
+        public async Task<ChatUpdatedEvent> SetChannelChatroomAccountAge(Channel channel, int? minDuration)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
 
+            var data = new Dictionary<string, dynamic>() { { "account_age_mode", minDuration.HasValue }, { "account_age_min_duration", minDuration.GetValueOrDefault(0) } };
+            var response = await ApiJsonPut<ChatUpdatedEvent>($"/api/v2/channels/{channel.Slug}/chatroom", data);
+            if (response == null)
+            {
+                throw new Exception("Cannot fetch data from API.");
+            }
+            return response;
+        }
+        #endregion
+        
+        #region Channel Roles
         public async Task<VipUserEvent> AddChannelVip(Channel channel, string username)
         {
             if (!IsAuthenticated)
@@ -273,19 +313,7 @@ namespace Kick.API
                 throw new Exception(response.Status.Message);
             }
         }
-
-        private async Task<ChatCommandResult> SendChatCommand(Channel channel, ChatCommand command)
-        {
-            if (!IsAuthenticated)
-                throw new UnauthenticatedException();
-
-            var response = await ApiJsonPost<ChatCommandResult>($"/api/v2/channels/{channel.Slug}/chat-commands", command);
-            if (response == null)
-            {
-                throw new Exception("Chat command failed");
-            }
-            return response;
-        }
+        #endregion
 
         #region Ban/Timeout
         public async Task<UserBanResult> BanUser(Channel channel, string username, string reason = "")
@@ -328,52 +356,44 @@ namespace Kick.API
             }
         }
         #endregion
-
-        public async Task ClearChat(Channel channel)
+        
+        #region Live Settings
+        public async Task<StreamInfo> GetStreamInfo(Channel channel)
         {
             if (!IsAuthenticated)
                 throw new UnauthenticatedException();
-
-            await SendChatCommand(channel, new ChatCommand("clear", null));
-        }
-
-        public async Task SetChannelTitle(Channel channel, string title)
-        {
-            if (!IsAuthenticated)
-                throw new UnauthenticatedException();
-
-            await SendChatCommand(channel, new ChatCommand("title", title));
-        }
-
-        private List<ParentCategory> _cacheCategories;
-
-        public async Task SetChannelCategory(Channel channel, string category)
-        {
-            if (!IsAuthenticated)
-                throw new UnauthenticatedException();
-
-            if (_cacheCategories == null)
-            {
-                _cacheCategories = await ApiGet<List<ParentCategory>>($"/api/v1/listsubcategories") ?? throw new Exception("Unable to retrieve categories list.");
-            }
-
-            var categoryLower = category.ToLower();
-            long categoryId = 0;
-            var bestScore = int.MaxValue;
-            _cacheCategories.ForEach(mainCat => {
-                var score = ComputeLevenshtein(categoryLower, mainCat.Name.ToLower());
-                if (score >= bestScore) return;
-                bestScore = score;
-                categoryId = mainCat.Id;
-            });
             
-            var updateRequest = await ApiJsonPost<Dictionary<string, object>>($"/stream/{channel.LiveStream.Slug}/update", new Dictionary<string, long>() { { "subcategoryId", categoryId } });
-            if (updateRequest == null)
-            {
-                throw new Exception("Unable to set category.");
-            }
+            return await ApiGet<StreamInfo>($"/api/v2/channels/{channel.Slug}/stream-info");
         }
 
+        public async Task<StreamInfo> SetStreamInfo(Channel channel, StreamInfo streamInfo)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "category_id", streamInfo.Category.Id },
+                { "is_mature", streamInfo.IsMature },
+                { "language", streamInfo.Language },
+                { "stream_title", streamInfo.StreamTitle }
+            };
+            return await ApiJsonPatch<StreamInfo>($"/api/v2/channels/{channel.Slug}/stream-info", data);
+        }
+
+        public async Task<StreamCategory> FindClosestStreamCategory(string categoryName)
+        {
+            var query = new Dictionary<string, dynamic>() { { "q", categoryName }, { "query_by", "name" } };
+            var result = await ApiSearch<StreamCategory>(SearchCollections.Categories, query);
+            
+            if (result.Found <= 0) throw new Exception("No category found with that name.");
+            
+            var bestHit = result.Hits[0];
+            return bestHit.Document;
+        }
+        #endregion
+
+        #region Poll
         public async Task<Poll> StartPoll(Channel channel, string question, string[] answers, int duration, int resultDuration)
         {
             if (!IsAuthenticated)
@@ -392,6 +412,7 @@ namespace Kick.API
             }
             return response.Data.Poll;
         }
+        #endregion
 
         #region Clips
         public async Task<Clip> MakeClip(Channel channel, int duration, string title = null, int? startTime = null)
@@ -440,35 +461,6 @@ namespace Kick.API
                 throw new Exception("Clip finalization failed!");
             }
             return response;
-        }
-
-        private static int ComputeLevenshtein(string source, string target)
-        {
-            int sourceLength = source.Length;
-            int targetLength = target.Length;
-
-            int[,] matrix = new int[sourceLength + 1, targetLength + 1];
-
-            for (int i = 0; i <= sourceLength; i++)
-                matrix[i, 0] = i;
-
-            for (int j = 0; j <= targetLength; j++)
-                matrix[0, j] = j;
-
-            for (int i = 1; i <= sourceLength; i++)
-            {
-                for (int j = 1; j <= targetLength; j++)
-                {
-                    int cost = (source[i - 1] == target[j - 1]) ? 0 : 1;
-
-                    matrix[i, j] = Math.Min(
-                        Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
-                        matrix[i - 1, j - 1] + cost
-                    );
-                }
-            }
-
-            return matrix[sourceLength, targetLength];
         }
 
         public async Task<List<Clip>> GetLatestClips(Channel channel, int count = 20, string orderBy = "date", string timeRange = "all")

@@ -32,6 +32,8 @@ namespace Kick.API.Internal
     internal sealed class KickBrowser : Form
     {
         private const string KickBaseUri = "https://kick.com";
+        //private const string KickBrowserStart = "https://dashboard.kick.com/?auth=sign-in";
+        private const string KickBrowserStart = "https://kick.com/";
         public string Profile { get; }
         
         private bool _closable;
@@ -138,7 +140,7 @@ const loopInterval = setInterval(loop, 500);
                         }
                     });
                 };
-                WebController.CoreWebView2.Navigate(KickBaseUri);
+                WebController.CoreWebView2.Navigate(KickBrowserStart);
             };
         }
         

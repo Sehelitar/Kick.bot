@@ -114,6 +114,7 @@ namespace Kick.Bot
                 
                 var broadcasterName = "<Déconnecté>";
                 var broadcasterStatus = "-";
+                string broadcasterPicture = null;
                 if (BroadcasterKClient.IsAuthenticated)
                 {
                     var currentUserInfos = await BroadcasterKClient.GetCurrentUserInfos();
@@ -122,12 +123,14 @@ namespace Kick.Bot
                     broadcasterStatus = channelInfos.IsAffiliate
                         ? "Affiliate"
                         : (channelInfos.IsVerified ? "Verified" : "User");
+                    broadcasterPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
                     
                     BotClient.CPH.LogDebug($"[Kick] Broadcaster status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
                 }
 
                 var botName = "<Déconnecté>";
                 var botStatus = "-";
+                string botPicture = null;
                 if (BotKClient.IsAuthenticated)
                 {
                     var currentUserInfos = await BotKClient.GetCurrentUserInfos();
@@ -136,6 +139,7 @@ namespace Kick.Bot
                     botStatus = channelInfos.IsAffiliate
                         ? "Affiliate"
                         : (channelInfos.IsVerified ? "Verified" : "User");
+                    botPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
                     
                     BotClient.CPH.LogDebug($"[Kick] Bot status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
                 }
@@ -160,13 +164,53 @@ namespace Kick.Bot
                     matches = ConfigWindow.Controls.Find("broadcasterStatus", true);
                     if (matches.Any())
                         matches.First().Text = broadcasterStatus;
-                    
+                    if (broadcasterPicture != null)
+                    {
+                        var decoder = new Imazen.WebP.SimpleDecoder();
+                        using (var stream = System.Net.WebRequest
+                                   .CreateHttp(broadcasterPicture)
+                                   .GetResponse().GetResponseStream())
+                        using (var memoryStream = new System.IO.MemoryStream())
+                        {
+                            stream.CopyTo(memoryStream);
+                            var pictureBuffer = memoryStream.ToArray();
+                            var image = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                            
+                            matches = ConfigWindow.Controls.Find("broadcasterPicture", true);
+                            if (matches.Any())
+                            {
+                                if(matches.First() is PictureBox firstMatch)
+                                    firstMatch.Image = image;
+                            }
+                        }
+                    }
+
                     matches = ConfigWindow.Controls.Find("botName", true);
                     if (matches.Any())
                         matches.First().Text = botName;
                     matches = ConfigWindow.Controls.Find("botStatus", true);
                     if (matches.Any())
                         matches.First().Text = botStatus;
+                    if (botPicture != null)
+                    {
+                        var decoder = new Imazen.WebP.SimpleDecoder();
+                        using (var stream = System.Net.WebRequest
+                                   .CreateHttp(botPicture)
+                                   .GetResponse().GetResponseStream())
+                        using (var memoryStream = new System.IO.MemoryStream())
+                        {
+                            stream.CopyTo(memoryStream);
+                            var pictureBuffer = memoryStream.ToArray();
+                            var image = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                            
+                            matches = ConfigWindow.Controls.Find("botPicture", true);
+                            if (matches.Any())
+                            {
+                                if(matches.First() is PictureBox firstMatch)
+                                    firstMatch.Image = image;
+                            }
+                        }
+                    }
                 }));
                 
                 BotClient.CPH.LogDebug("[Kick] UI refreshed.");

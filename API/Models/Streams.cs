@@ -91,4 +91,44 @@ namespace Kick.API.Models
         [JsonProperty("uuid")]
         public string Uuid { get; internal set; }
     }
+
+    public class StreamInfo
+    {
+        [JsonProperty("category")]
+        public StreamCategory Category { get; internal set; }
+        [JsonProperty("is_mature")]
+        public bool IsMature { get; internal set; }
+        [JsonProperty("is_live")]
+        public bool? IsLive { get; internal set; }
+        [JsonProperty("language")]
+        public string Language { get; internal set; }
+        [JsonProperty("start_time")]
+        public DateTime? StartTime { get; internal set; }
+        [JsonProperty("stream_title")]
+        public string StreamTitle { get; internal set; }
+        [JsonProperty("viewer_count")]
+        public int? ViewerCount { get; internal set; }
+    }
+
+    public class StreamCategory
+    {
+        [JsonProperty("id")]
+        public long Id { get; internal set; }
+        [JsonProperty("name")]
+        public string Name { get; internal set; }
+        [JsonProperty("slug")]
+        public string Slug { get; internal set; }
+        [JsonProperty("thumbnail")]
+        public StreamCategoryThumbnail Thumbnail { get; internal set; }
+        [JsonProperty("tags")]
+        public string[] Tags { get; internal set; }
+    }
+
+    public class StreamCategoryThumbnail
+    {
+        [JsonProperty("src")]
+        public string Src { get; internal set; }
+        [JsonProperty("srcset")]
+        public string SrcSet { get; internal set; }
+    }
 }
