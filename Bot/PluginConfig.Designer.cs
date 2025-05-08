@@ -91,6 +91,7 @@ namespace Kick.Bot
             // 
             // broadcasterPusherDisconnect
             // 
+            this.broadcasterPusherDisconnect.Enabled = false;
             this.broadcasterPusherDisconnect.Location = new System.Drawing.Point(208, 22);
             this.broadcasterPusherDisconnect.Name = "broadcasterPusherDisconnect";
             this.broadcasterPusherDisconnect.Size = new System.Drawing.Size(126, 38);

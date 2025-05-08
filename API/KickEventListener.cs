@@ -196,6 +196,10 @@ namespace Kick.API
                             case "App\\Events\\PinnedMessageDeletedEvent":
                                 OnMessageUnpinned?.Invoke();
                                 return;
+                            case "App\\Events\\UserBannedEvent":
+                            case "App\\Events\\UserUnbannedEvent":
+                                // ignored
+                                return;
                             default:
                                 Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PubChat] Unknown event triggered => {eventType} : {eventData}");
                                 break;
@@ -325,9 +329,9 @@ namespace Kick.API
                                     modeChanged = ChatMode.AllowLinksDeactivated;
                                     break;
                                 case "MessagePinned":
-                                    // ignored, duplicate
-                                    break;
                                 case "MessageUnpinned":
+                                case "PollCreated":
+                                case "PollDeleted":
                                     // ignored, duplicate
                                     break;
                                 default:

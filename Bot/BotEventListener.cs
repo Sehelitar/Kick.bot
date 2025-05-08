@@ -41,24 +41,25 @@ namespace Kick.Bot
             _eventListener = listener;
             Channel = channel;
 
-            _eventListener.OnViewerFollow += Kick_OnViewerFollow;
             _eventListener.OnChatMessage += Kick_OnChatMessage;
             _eventListener.OnChatMessageDeleted += Kick_OnChatMessageDeleted;
-            _eventListener.OnSubscription += Kick_OnSubscription;
-            _eventListener.OnSubGift += Kick_OnSubGift;
-            _eventListener.OnUserBanned += Kick_OnUserBanned;
             _eventListener.OnChatUpdated += Kick_OnChatUpdated;
-            _eventListener.OnPollCreated += Kick_OnPollCreated;
-            _eventListener.OnPollUpdated += Kick_OnPollUpdated;
-            _eventListener.OnPollCompleted += Kick_OnPollCompleted;
-            _eventListener.OnPollCancelled += Kick_OnPollCancelled;
-            _eventListener.OnStreamStarted += Kick_OnStreamStarted;
-            _eventListener.OnStreamEnded += Kick_OnStreamEnded;
-            _eventListener.OnStreamUpdated += Kick_OnStreamUpdated;
-            _eventListener.OnRaid += Kick_OnRaid;
+            _eventListener.OnChatModeChanged += Kick_OnChatModeChanged;
             _eventListener.OnMessagePinned += Kick_OnMessagePinned;
             _eventListener.OnMessageUnpinned += Kick_OnMessageUnpinned;
+            _eventListener.OnPollCancelled += Kick_OnPollCancelled;
+            _eventListener.OnPollCompleted += Kick_OnPollCompleted;
+            _eventListener.OnPollCreated += Kick_OnPollCreated;
+            _eventListener.OnPollUpdated += Kick_OnPollUpdated;
+            _eventListener.OnRaid += Kick_OnRaid;
             _eventListener.OnRewardRedeemed += Kick_OnRewardRedeemed;
+            _eventListener.OnStreamEnded += Kick_OnStreamEnded;
+            _eventListener.OnStreamStarted += Kick_OnStreamStarted;
+            _eventListener.OnStreamUpdated += Kick_OnStreamUpdated;
+            _eventListener.OnSubGift += Kick_OnSubGift;
+            _eventListener.OnSubscription += Kick_OnSubscription;
+            _eventListener.OnUserBanned += Kick_OnUserBanned;
+            _eventListener.OnViewerFollow += Kick_OnViewerFollow;
 
             _eventListener.JoinAsync(Channel).Wait();
 
@@ -579,6 +580,68 @@ namespace Kick.Bot
                 CPH.LogError($"[Kick] An error occurred while handling chat mode change : {ex.Message}");
             }
         }
+        
+        private void Kick_OnChatModeChanged(ChatModeChangedEvent chatModeChangedEvent)
+        {
+            try
+            {
+                if (chatModeChangedEvent.Channel.Id != Channel.Id)
+                    return;
+
+                var propertyName = "unknown";
+                var propertyValue = false;
+                switch (chatModeChangedEvent.ChatMode)
+                {
+                    case ChatMode.FollowersOnlyEnabled:
+                        propertyValue = true;
+                        goto case ChatMode.FollowersOnlyDisabled;
+                    case ChatMode.FollowersOnlyDisabled :
+                        propertyName = "followersOnly";
+                        break;
+                    case ChatMode.AllowLinksActivated:
+                        propertyValue = true;
+                        goto case ChatMode.AllowLinksDeactivated;
+                    case ChatMode.AllowLinksDeactivated:
+                        propertyName = "allowLinks";
+                        break;
+                    case ChatMode.EmotesOnlyEnabled:
+                        propertyValue = true;
+                        goto case ChatMode.EmotesOnlyDisabled;
+                    case ChatMode.EmotesOnlyDisabled:
+                        propertyName = "emotesOnly";
+                        break;
+                    case ChatMode.SlowModeEnabled:
+                        propertyValue = true;
+                        goto case ChatMode.SlowModeDisabled;
+                    case ChatMode.SlowModeDisabled:
+                        propertyName = "slowMode";
+                        break;
+                    case ChatMode.SubsOnlyEnabled:
+                        propertyValue = true;
+                        goto case ChatMode.SubsOnlyDisabled;
+                    case ChatMode.SubsOnlyDisabled:
+                        propertyName = "subsOnly";
+                        break;
+                    default: break;
+                }
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.ChatModeChanged,
+                    Arguments = new Dictionary<string, object>() {
+                        { "chatMode", (int)chatModeChangedEvent.ChatMode },
+                        { "propertyName", propertyName },
+                        { "propertyValue", propertyValue },
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred while handling chat mode change : {ex.Message}");
+            }
+        }
 
         private void Kick_OnPollCancelled(PollUpdateEvent pollUpdateEvent)
         {
@@ -1016,25 +1079,26 @@ namespace Kick.Bot
             public const string Message = "kickChatMessage";
             public const string ChatCommand = "kickChatCommand";
             public const string ChatCommandCooldown = "kickChatCommandCooldown";
+            public const string ChatUpdated = "kickChatUpdated";
+            public const string ChatModeChanged = "kickChatModeChanged";
             public const string MessageDeleted = "kickChatMessageDeleted";
+            public const string MessagePinned = "kickMessagePinned";
+            public const string MessageUnpinned = "kickMessageUnpinned";
+            public const string PollCancelled = "kickPollCancelled";
+            public const string PollCompleted = "kickPollCompleted";
+            public const string PollCreated = "kickPollCreated";
+            public const string PollUpdated = "kickPollUpdated";
+            public const string Raid = "kickIncomingRaid";
+            public const string RewardRedeemed = "kickRewardRedeemed";
+            public const string StreamEnded = "kickStreamEnded";
+            public const string StreamStarted = "kickStreamStarted";
             public const string Subscription = "kickSub";
             public const string SubGift = "kickGift";
             public const string SubGifts = "kickGifts";
             public const string Timeout = "kickTO";
+            public const string TitleChanged = "kickTitleChanged";
             public const string UserBanned = "kickBan";
             public const string UserUnbanned = "kickUnban";
-            public const string PollCreated = "kickPollCreated";
-            public const string PollUpdated = "kickPollUpdated";
-            public const string PollCompleted = "kickPollCompleted";
-            public const string PollCancelled = "kickPollCancelled";
-            public const string ChatUpdated = "kickChatUpdated";
-            public const string StreamStarted = "kickStreamStarted";
-            public const string StreamEnded = "kickStreamEnded";
-            public const string Raid = "kickIncomingRaid";
-            public const string TitleChanged = "kickTitleChanged";
-            public const string MessagePinned = "kickMessagePinned";
-            public const string MessageUnpinned = "kickMessageUnpinned";
-            public const string RewardRedeemed = "kickRewardRedeemed";
         }
 
         internal class BotEvent

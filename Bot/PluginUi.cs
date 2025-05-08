@@ -54,18 +54,65 @@ namespace Kick.Bot
                         awaitLock.Set();
                     }
                 };
-                ConfigWindow.OnLoginRequested += (isBot) =>
+                ConfigWindow.OnLoginRequested += async (isBot) =>
                 {
                     BotClient.CPH.LogDebug("[Kick] Starting authentication for " + (isBot ? "bot" : "broadcaster") + " account...");
-                    if(isBot)
-                        BotKClient.Browser.BeginAuthentication();
+                    if (isBot)
+                    {
+                        if (BotKClient.IsAuthenticated)
+                        {
+                            await BotKClient.Browser.BeginLogout();
+                            BotKClient = new KickClient(BotKClient.Browser); // Reset Client
+                            RefreshUi();
+                        }
+                        else
+                        {
+                            BotKClient.Browser.BeginAuthentication();
+                        }
+                    }
                     else
-                        BroadcasterKClient.Browser.BeginAuthentication();
+                    {
+                        if (BroadcasterKClient.IsAuthenticated)
+                        {
+                            await BroadcasterKClient.Browser.BeginLogout();
+                            BroadcasterKClient = new KickClient(BroadcasterKClient.Browser); // Reset Client
+                            RefreshUi();
+                        }
+                        else
+                        {
+                            BroadcasterKClient.Browser.BeginAuthentication();
+                        }
+                    }
                 };
-                
+                ConfigWindow.OnBroadcastSocketChangeRequested += async () =>
+                {
+                    if (BroadcasterKClient.GetEventListener().IsConnected)
+                    {
+                        await BroadcasterKClient.GetEventListener().DisconnectAsync();
+                        BotClient.CPH.LogDebug("[Kick] Broadcast socket disconnected.");
+                        RefreshUi();
+                    }
+                    else
+                    {
+                        await BroadcasterKClient.GetEventListener().ConnectAsync();
+                        BotClient.CPH.LogDebug("[Kick] Broadcast socket connected.");
+                        RefreshUi();
+                    }
+                };
+
                 AppContext = new ApplicationContext();
                 AppContext.MainForm = ConfigWindow;
-                
+
+                var isNotFirstTime = BotClient.CPH.GetGlobalVar<bool>("KickNotFirstLaunch", true);
+                if (isNotFirstTime)
+                {
+                    ConfigWindow.Visible = false;
+                }
+                else
+                {
+                    ConfigWindow.Visible = true;
+                    BotClient.CPH.SetGlobalVar("KickNotFirstLaunch", true, true);
+                }
                 Application.Run(AppContext);
                 
                 AppContext = null;
@@ -114,7 +161,7 @@ namespace Kick.Bot
                 
                 var broadcasterName = "<Déconnecté>";
                 var broadcasterStatus = "-";
-                string broadcasterPicture = null;
+                Bitmap broadcasterPictureBitmap = null;
                 if (BroadcasterKClient.IsAuthenticated)
                 {
                     var currentUserInfos = await BroadcasterKClient.GetCurrentUserInfos();
@@ -123,14 +170,30 @@ namespace Kick.Bot
                     broadcasterStatus = channelInfos.IsAffiliate
                         ? "Affiliate"
                         : (channelInfos.IsVerified ? "Verified" : "User");
-                    broadcasterPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
-                    
+                    var broadcasterPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
+
+                    if (broadcasterPicture != null)
+                    {
+                        var decoder = new Imazen.WebP.SimpleDecoder();
+                        using (var stream = System.Net.WebRequest
+                                   .CreateHttp(broadcasterPicture)
+                                   .GetResponse().GetResponseStream())
+                        using (var memoryStream = new System.IO.MemoryStream())
+                        {
+                            if (stream != null) {
+                                await stream.CopyToAsync(memoryStream);
+                                var pictureBuffer = memoryStream.ToArray();
+                                broadcasterPictureBitmap = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                            }
+                        }
+                    }
+
                     BotClient.CPH.LogDebug($"[Kick] Broadcaster status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
                 }
 
                 var botName = "<Déconnecté>";
                 var botStatus = "-";
-                string botPicture = null;
+                Bitmap botPictureBitmap = null;
                 if (BotKClient.IsAuthenticated)
                 {
                     var currentUserInfos = await BotKClient.GetCurrentUserInfos();
@@ -139,7 +202,23 @@ namespace Kick.Bot
                     botStatus = channelInfos.IsAffiliate
                         ? "Affiliate"
                         : (channelInfos.IsVerified ? "Verified" : "User");
-                    botPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
+                    var botPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
+                    
+                    if (botPicture != null)
+                    {
+                        var decoder = new Imazen.WebP.SimpleDecoder();
+                        using (var stream = System.Net.WebRequest
+                                   .CreateHttp(botPicture)
+                                   .GetResponse().GetResponseStream())
+                        using (var memoryStream = new System.IO.MemoryStream())
+                        {
+                            if (stream != null) {
+                                await stream.CopyToAsync(memoryStream);
+                                var pictureBuffer = memoryStream.ToArray();
+                                botPictureBitmap = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                            }
+                        }
+                    }
                     
                     BotClient.CPH.LogDebug($"[Kick] Bot status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
                 }
@@ -154,36 +233,24 @@ namespace Kick.Bot
                     if (matches.Any())
                         matches.First().Text = BotKClient.IsAuthenticated ? "Logout" : "Login";
             
-                    matches = ConfigWindow.Controls.Find("broadcasterSocketStatus", true);
-                    if (matches.Any())
-                        matches.First().BackColor = BotKClient.IsAuthenticated && BroadcasterKClient.GetEventListener().IsConnected ? Color.SpringGreen : Color.Red;
-                    
                     matches = ConfigWindow.Controls.Find("broadcasterName", true);
                     if (matches.Any())
                         matches.First().Text = broadcasterName;
                     matches = ConfigWindow.Controls.Find("broadcasterStatus", true);
                     if (matches.Any())
                         matches.First().Text = broadcasterStatus;
-                    if (broadcasterPicture != null)
+                    if (broadcasterPictureBitmap != null)
                     {
-                        var decoder = new Imazen.WebP.SimpleDecoder();
-                        using (var stream = System.Net.WebRequest
-                                   .CreateHttp(broadcasterPicture)
-                                   .GetResponse().GetResponseStream())
-                        using (var memoryStream = new System.IO.MemoryStream())
+                        matches = ConfigWindow.Controls.Find("broadcasterPicture", true);
+                        if (matches.Any())
                         {
-                            stream.CopyTo(memoryStream);
-                            var pictureBuffer = memoryStream.ToArray();
-                            var image = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
-                            
-                            matches = ConfigWindow.Controls.Find("broadcasterPicture", true);
-                            if (matches.Any())
-                            {
-                                if(matches.First() is PictureBox firstMatch)
-                                    firstMatch.Image = image;
-                            }
+                            if(matches.First() is PictureBox firstMatch)
+                                firstMatch.Image = broadcasterPictureBitmap;
                         }
                     }
+                    matches = ConfigWindow.Controls.Find("broadcasterPusherDisconnect", true);
+                    if (matches.Any())
+                        matches.First().Enabled = false; //BroadcasterKClient.IsAuthenticated && BroadcasterKClient.GetEventListener().IsConnected;
 
                     matches = ConfigWindow.Controls.Find("botName", true);
                     if (matches.Any())
@@ -191,30 +258,34 @@ namespace Kick.Bot
                     matches = ConfigWindow.Controls.Find("botStatus", true);
                     if (matches.Any())
                         matches.First().Text = botStatus;
-                    if (botPicture != null)
+                    if (botPictureBitmap != null)
                     {
-                        var decoder = new Imazen.WebP.SimpleDecoder();
-                        using (var stream = System.Net.WebRequest
-                                   .CreateHttp(botPicture)
-                                   .GetResponse().GetResponseStream())
-                        using (var memoryStream = new System.IO.MemoryStream())
+                        matches = ConfigWindow.Controls.Find("botPicture", true);
+                        if (matches.Any())
                         {
-                            stream.CopyTo(memoryStream);
-                            var pictureBuffer = memoryStream.ToArray();
-                            var image = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
-                            
-                            matches = ConfigWindow.Controls.Find("botPicture", true);
-                            if (matches.Any())
-                            {
-                                if(matches.First() is PictureBox firstMatch)
-                                    firstMatch.Image = image;
-                            }
+                            if(matches.First() is PictureBox firstMatch)
+                                firstMatch.Image = botPictureBitmap;
                         }
                     }
                 }));
                 
-                BotClient.CPH.LogDebug("[Kick] UI refreshed.");
+                RefreshEventListenerStatus();
             });
+        }
+
+        public void RefreshEventListenerStatus()
+        {
+            if (ConfigWindow == null)
+                return;
+            
+            BotClient.CPH.LogDebug("[Kick] Refreshing EventListener status UI...");
+            ConfigWindow.Invoke((Action)(() =>
+            {
+                var matches = ConfigWindow.Controls.Find("broadcasterSocketStatus", true);
+                if (matches.Any())
+                    matches.First().BackColor = BroadcasterKClient.IsAuthenticated && BroadcasterKClient.GetEventListener().IsConnected ? Color.SpringGreen : Color.Red;
+            }));
+            BotClient.CPH.LogDebug("[Kick] UI refreshed.");
         }
     }
 }

@@ -46,6 +46,8 @@ namespace Kick.API.Internal
         
         public bool IsAuthenticated { get; private set; }
 
+        private bool _isWaitingForAuthentication = false;
+
         internal KickBrowser(string profile = null) : base()
         {
             Profile = profile;
@@ -112,33 +114,7 @@ namespace Kick.API.Internal
                     WebController.CoreWebView2.OpenDevToolsWindow();
 #endif
                     OnReady?.Invoke(this, EventArgs.Empty);
-                    
-                    ExecuteAsyncFetch(
-                        null,
-                        @"return new Promise((r,j) => {
-const loop = () => {
-    cookieStore
-		.get('session_token')
-		.then(cookie => {
-            if(cookie) {
-                clearInterval(loopInterval);
-				r('OK');
-			}
-		});
-};
-const loopInterval = setInterval(loop, 500);
-});"
-                    ).ContinueWith((Task response) =>
-                    {
-                        if(response.IsFaulted)
-                            BotClient.CPH.LogError($"[Kick] An exception occured while looking for authentication status : {response.Exception}");
-                        else if (response.IsCompleted)
-                        {
-                            IsAuthenticated = true;
-                            BotClient.CPH.LogInfo($"[Kick] Authenticated with Kick!");
-                            OnAuthenticated?.Invoke(this, EventArgs.Empty);
-                        }
-                    });
+                    EndAuthentication();
                 };
                 WebController.CoreWebView2.Navigate(KickBrowserStart);
             };
@@ -150,7 +126,9 @@ const loopInterval = setInterval(loop, 500);
             if (IsAuthenticated) return;
 
             // Automatically open login form
-            ExecuteScriptAsync(@"(function() { document.evaluate(""/html/body/div/nav/div/button[3]"", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click(); })();");
+            ExecuteScriptAsync(@"(function() {
+    document.evaluate(""/html/body/div/nav/div/button[3]"", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();
+})();");
 
             // Wait for UI to respond
             Thread.Sleep(200);
@@ -181,6 +159,72 @@ const loopInterval = setInterval(loop, 500);
             
             // Display window
             Show(BotClient.GlobalPluginUi.ConfigWindow);
+            EndAuthentication();
+        }
+
+        private void EndAuthentication()
+        {
+            if (_isWaitingForAuthentication)
+                return;
+            _isWaitingForAuthentication = true;
+            
+            ExecuteAsyncFetch(
+                null,
+                @"return new Promise((r,j) => {
+const loop = () => {
+    cookieStore
+		.get('session_token')
+		.then(cookie => {
+            if(cookie) {
+                clearInterval(loopInterval);
+				r('OK');
+			}
+		});
+};
+const loopInterval = setInterval(loop, 500);
+});"
+            ).ContinueWith((Task response) =>
+            {
+                _isWaitingForAuthentication = false;
+                if(response.IsFaulted)
+                    BotClient.CPH.LogError($"[Kick] An exception occured while looking for authentication status : {response.Exception}");
+                else if (response.IsCompleted)
+                {
+                    IsAuthenticated = true;
+                    BotClient.CPH.LogInfo($"[Kick] Authenticated with Kick!");
+                    if (InvokeRequired)
+                        Invoke((Action)Hide);
+                    else
+                        Hide();
+                    OnAuthenticated?.Invoke(this, EventArgs.Empty);
+                }
+            });
+        }
+        
+        public async Task BeginLogout()
+        {
+            BotClient.CPH.LogInfo($"[Kick] Logging out of Kick...");
+            if (!IsAuthenticated) return;
+            
+            // Open menu
+            await ExecuteAsyncFetch(null, @"
+document.evaluate(""/html/body/div/nav/div/button[2]"", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();
+return true;
+");
+            
+            // Wait for UI to respond
+            Thread.Sleep(200);
+            
+            // Click Disconnect
+            await ExecuteAsyncFetch(null, @"
+document.evaluate(""/html/body/div/nav/div/div/button"", document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();
+return true;
+");
+            
+            IsAuthenticated = false;
+            
+            // Wait for UI to respond
+            Thread.Sleep(200);
         }
         
         public void ForceClose()

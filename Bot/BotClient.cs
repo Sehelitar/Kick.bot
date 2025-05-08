@@ -42,8 +42,8 @@ namespace Kick.Bot
         
         internal static PluginUi GlobalPluginUi;
 
-        private KickClient Client { get; set; }
-        private KickClient AltClient { get; set; }
+        private static KickClient Client => GlobalPluginUi.BroadcasterKClient;
+        private static KickClient AltClient => GlobalPluginUi.BotKClient;
 
         public User AuthenticatedUser { get; private set; }
         public User AuthenticatedBot { get; private set; }
@@ -92,12 +92,10 @@ namespace Kick.Bot
             
             // Broadcaster
             CPH.LogDebug("[Kick] Client initialization...");
-            Client = GlobalPluginUi.BroadcasterKClient;
             Client.Browser.OnAuthenticated += Authenticated;
             
             // Bot
             CPH.LogDebug("[Kick] Bot initialization...");
-            AltClient = GlobalPluginUi.BotKClient;
             AltClient.Browser.OnAuthenticated += BotAuthenticated;
             
             CommandCounter.PruneVolatile();
