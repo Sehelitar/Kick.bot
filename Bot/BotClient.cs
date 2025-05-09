@@ -22,6 +22,7 @@ using Streamer.bot.Plugin.Interface;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Drawing;
 using System.Net;
 using System.Threading.Tasks;
 using System.IO;
@@ -32,6 +33,7 @@ using LiteDB;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Runtime.Remoting;
+using Kick.Properties;
 using Newtonsoft.Json;
 
 namespace Kick.Bot
@@ -54,6 +56,7 @@ namespace Kick.Bot
             CPH.LogDebug("[Kick] Extension loaded. Starting...");
             
             CPH.RegisterCustomTrigger("[Kick] Chat Message", BotEventListener.BotEventType.Message, new[] { "Kick", "Chat" });
+            CPH.RegisterCustomTrigger("[Kick] Chat config updated", BotEventListener.BotEventType.ChatUpdated, new[] { "Kick", "Chat" });
 
             CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new[] { "Kick", "Commands" });
             CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands Cooldown" });
@@ -135,14 +138,21 @@ namespace Kick.Bot
                 CPH.LogDebug($"[Kick] Connected as {AuthenticatedUser.Username}");
                 var target = Path.GetTempPath() + "KickLogo.png";
                 new ToastContentBuilder()
-                    .AddText("Kick")
+                    .AddText("Kick.bot")
                     .AddText($"Successfuly connected as {AuthenticatedUser.Username}")
+                    /*.AddAppLogoOverride(
+                        new Uri("pack://application,,,/Resources/kick.png", UriKind.Absolute),
+                        ToastGenericAppLogoCrop.None,
+                        "Kick.bot",
+                        true
+                    )*/
                     //.AddAppLogoOverride(new Uri(target), ToastGenericAppLogoCrop.None)
                     .SetToastDuration(ToastDuration.Short)
                     .Show();
 
                 BroadcasterListener = await StartListeningToSelf();
                 CPH.LogDebug($"[Kick] Listener active.");
+                ReloadRewards();
             });
         }
         
@@ -175,6 +185,28 @@ namespace Kick.Bot
             return new BotEventListener(Client.GetEventListener(), channel);
         }
 
+        public bool ReloadRewards(Channel channel = null)
+        {
+            try
+            {
+                if (channel == null)
+                    channel = BroadcasterListener.Channel;
+                var rewards = new List<Reward>(Client.GetRewardsList(channel, true).Result);
+                rewards.Sort((x, y) => string.Compare(x.Title, y.Title, StringComparison.InvariantCultureIgnoreCase));
+                foreach (var reward in rewards)
+                {
+                    CPH.RegisterCustomTrigger($"[Kick/Reward] {reward.Title}", $"{BotEventListener.BotEventType.RewardRedeemed}.{reward.Id}", new[] { "Kick", "Rewards" });
+                }
+
+                return true;
+            }
+            catch(Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while reloading rewards : {ex}");
+                return false;
+            }
+        }
+        
         public bool SendMessage(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try {
@@ -192,9 +224,14 @@ namespace Kick.Bot
                 
                 if (!args.TryGetValue("message", out var message))
                     throw new Exception("missing argument, message required");
+                
+                if (args.TryGetValue("useBotProfile", out var useBotProfile))
+                    useBotProfile = Convert.ToBoolean(useBotProfile);
+                else
+                    useBotProfile = true;
 
                 Task<ChatMessageEvent> result;
-                if(AltClient.Browser.IsAuthenticated)
+                if(AltClient.Browser.IsAuthenticated && useBotProfile)
                     result = AltClient.SendMessageToChatroom(chatroomId, Convert.ToString(message));
                 else
                     result = Client.SendMessageToChatroom(chatroomId, Convert.ToString(message));
@@ -262,9 +299,14 @@ namespace Kick.Bot
                 
                 if (!args.TryGetValue("message", out var message))
                     throw new Exception("missing argument, message required");
+                
+                if (args.TryGetValue("useBotProfile", out var useBotProfile))
+                    useBotProfile = Convert.ToBoolean(useBotProfile);
+                else
+                    useBotProfile = true;
 
                 Task<ChatMessageEvent> result;
-                if(AltClient.Browser.IsAuthenticated)
+                if(AltClient.Browser.IsAuthenticated && useBotProfile)
                     result = AltClient.SendReplyToChatroom(
                         chatroomId,
                         Convert.ToString(args["reply"]),
@@ -768,6 +810,8 @@ namespace Kick.Bot
                     var bestCategory = Client.FindClosestStreamCategory(category).Result as StreamCategory;
                     streamInfo.Category = bestCategory;
                 }
+                if (args.TryGetValue("isMature", out var isMature))
+                    streamInfo.IsMature = Convert.ToBoolean(isMature);
 
                 var result = Client.SetStreamInfo(channel, streamInfo);
                 result.Wait();
@@ -846,13 +890,12 @@ namespace Kick.Bot
             return false;
         }
         
-        public bool GetClips(Dictionary<string, dynamic> args, Channel channel)
+        public bool GetClips(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
-                
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
@@ -907,14 +950,12 @@ namespace Kick.Bot
             return false;
         }
 
-        public bool GetClipVideoUrl(Dictionary<string, dynamic> args, Channel channel)
+        public bool GetClipVideoUrl(Dictionary<string, dynamic> args)
         {
             try
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("clipId", out var clipId))
                 {
@@ -1556,7 +1597,8 @@ namespace Kick.Bot
                 var success = result.Status == TaskStatus.RanToCompletion;
                 if (success)
                 {
-                    CPH.SetArgument("rewardId", result.Id);
+                    CPH.SetArgument("rewardId", result.Result.Id);
+                    Task.Run(() => ReloadRewards());
                 }
                 return success;
             }
@@ -1665,7 +1707,7 @@ namespace Kick.Bot
                 if (!success) return false;
                 
                 CPH.SetArgument("redemptionsCount", result.Result.Length);
-                CPH.SetArgument("redemptions", result.Result);
+                //CPH.SetArgument("redemptions", result.Result);
                 Redemption[] redemptions = result.Result;
                 for (var i = 0; i < redemptions.Length; ++i)
                 {

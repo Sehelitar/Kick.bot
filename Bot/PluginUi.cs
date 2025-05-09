@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Kick.API;
 using Kick.API.Internal;
+using Kick.Properties;
 
 namespace Kick.Bot
 {
@@ -27,6 +28,12 @@ namespace Kick.Bot
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 UiContext = SynchronizationContext.Current;
+                
+                var isNotFirstTime = BotClient.CPH.GetGlobalVar<bool>("KickNotFirstLaunch", true);
+                if (!isNotFirstTime)
+                {
+                    BotClient.CPH.SetGlobalVar("KickNotFirstLaunch", true, true);
+                }
                 
                 ConfigWindow = new PluginConfig();
                 ConfigWindow.Load += (sender, args) =>
@@ -52,6 +59,8 @@ namespace Kick.Bot
                     finally
                     {
                         awaitLock.Set();
+                        if (isNotFirstTime)
+                            Task.Run(() => { ConfigWindow.Invoke((Action)(() => { ConfigWindow.Hide(); })); });
                     }
                 };
                 ConfigWindow.OnLoginRequested += async (isBot) =>
@@ -102,17 +111,6 @@ namespace Kick.Bot
 
                 AppContext = new ApplicationContext();
                 AppContext.MainForm = ConfigWindow;
-
-                var isNotFirstTime = BotClient.CPH.GetGlobalVar<bool>("KickNotFirstLaunch", true);
-                if (isNotFirstTime)
-                {
-                    ConfigWindow.Visible = false;
-                }
-                else
-                {
-                    ConfigWindow.Visible = true;
-                    BotClient.CPH.SetGlobalVar("KickNotFirstLaunch", true, true);
-                }
                 Application.Run(AppContext);
                 
                 AppContext = null;
@@ -185,6 +183,10 @@ namespace Kick.Bot
                                 var pictureBuffer = memoryStream.ToArray();
                                 broadcasterPictureBitmap = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
                             }
+                            else
+                            {
+                                broadcasterPictureBitmap = Resources.KickLogo;
+                            }
                         }
                     }
 
@@ -216,6 +218,10 @@ namespace Kick.Bot
                                 await stream.CopyToAsync(memoryStream);
                                 var pictureBuffer = memoryStream.ToArray();
                                 botPictureBitmap = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                            }
+                            else
+                            {
+                                botPictureBitmap = Resources.KickLogo;
                             }
                         }
                     }

@@ -22,11 +22,11 @@ namespace Models.API
         [JsonProperty("created_at")]
         public DateTime CreatedAt { get; internal set; }
         [JsonProperty("duration")]
-        public int Duration { get; internal set; }
+        public long Duration { get; internal set; }
         [JsonProperty("id")]
         public string Id { get; internal set; }
         [JsonProperty("likes")]
-        public int Likes { get; internal set; }
+        public long Likes { get; internal set; }
         [JsonProperty("livestream_id")]
         public string LivestreamId { get; internal set; }
         [JsonProperty("privacy")]
@@ -36,7 +36,7 @@ namespace Models.API
         [JsonProperty("title")]
         public string Title { get; internal set; }
         [JsonProperty("user_id")]
-        public int UserId { get; internal set; }
+        public long UserId { get; internal set; }
         [JsonProperty("views")]
         public long Views { get; internal set; }
     }

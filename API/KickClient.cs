@@ -419,12 +419,14 @@ namespace Kick.API
         {
             if (!IsAuthenticated)
                 throw new UnauthenticatedException();
+            
+            channel = GetChannelInfos(channel.Slug).Result;
 
             if (channel.LiveStream == null)
                 throw new Exception("This channel must be live to create a clip!");
 
-            if (duration <= 0 || duration > 90)
-                throw new Exception("Clip duration must be an integer between 1 and 90.");
+            if (duration <= 0 || duration > 60)
+                throw new Exception("Clip duration must be an integer between 1 and 60.");
 
             if (title == null)
                 title = DateTime.Now.ToString(CultureInfo.CurrentCulture);

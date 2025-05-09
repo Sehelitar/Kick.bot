@@ -74,7 +74,14 @@ namespace Kick.Bot
         }
 
         ~BotEventListener() {
-            _ = _eventListener.LeaveAsync(Channel);
+            try
+            {
+                _ = _eventListener.LeaveAsync(Channel);
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         private static void SendToQueue(BotEvent botEvent)

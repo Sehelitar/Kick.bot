@@ -132,11 +132,6 @@ namespace Kick.API
             Console.WriteLine($@"Pusher init, AppID: {KickAppId} (Kick.com), Cluster: {KickCluster}");
             _pusherClient = new Pusher(KickAppId, new PusherOptions() { Cluster = KickCluster, Authorizer = authorizer });
         }
-
-        ~KickEventListener()
-        {
-            DisconnectAsync().RunSynchronously();
-        }
         
         public async Task JoinAsync(API.Models.Channel channel, bool asMod = true)
         {
