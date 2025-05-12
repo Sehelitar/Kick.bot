@@ -60,6 +60,8 @@ namespace Kick.Bot
             _eventListener.OnSubscription += Kick_OnSubscription;
             _eventListener.OnUserBanned += Kick_OnUserBanned;
             _eventListener.OnViewerFollow += Kick_OnViewerFollow;
+            _eventListener.OnPredictionCreated += Kick_OnPredictionCreated;
+            _eventListener.OnPredictionUpdated += Kick_OnPredictionUpdated;
 
             _eventListener.JoinAsync(Channel).Wait();
 
@@ -1067,6 +1069,79 @@ namespace Kick.Bot
                 CPH.LogError($"[Kick] An error occurred when reading redeemed reward data : {ex.Message}");
             }
         }
+        
+        private void Kick_OnPredictionCreated(Prediction prediction)
+        {
+            try
+            {
+                var predictionData = new Dictionary<string, object>()
+                {
+                    { "predictionId", prediction.Id },
+                    { "predictionTitle", prediction.Title },
+                    { "predictionDuration", prediction.Duration },
+                    { "predictionCreatedAt", prediction.CreatedAt },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+                for (var i = 0; i < prediction.Outcomes.Length; ++i)
+                {
+                    predictionData.Add($"predictionOutcome{i}Id", prediction.Outcomes[i].Id);
+                    predictionData.Add($"predictionOutcome{i}Title", prediction.Outcomes[i].Title);
+                }
+                SendToQueue(new BotEvent
+                {
+                    ActionId = BotEventType.PredictionCreated,
+                    Arguments = predictionData
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred when reading prediction data : {ex.Message}");
+            }
+        }
+        
+        private void Kick_OnPredictionUpdated(Prediction prediction)
+        {
+            try
+            {
+                var predictionData = new Dictionary<string, object>()
+                {
+                    { "predictionId", prediction.Id },
+                    { "predictionTitle", prediction.Title },
+                    { "predictionState", prediction.State },
+                    { "predictionDuration", prediction.Duration },
+                    { "predictionCreatedAt", prediction.CreatedAt },
+                    { "predictionUpdatedAt", prediction.UpdatedAt },
+                    { "predictionLockedAt", prediction.LockedAt },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+                for (var i = 0; i < prediction.Outcomes.Length; ++i)
+                {
+                    predictionData.Add($"predictionOutcome{i}Id", prediction.Outcomes[i].Id);
+                    predictionData.Add($"predictionOutcome{i}Title", prediction.Outcomes[i].Title);
+                    predictionData.Add($"predictionOutcome{i}TotalVoteAmount", prediction.Outcomes[i].TotalVoteAmount);
+                    predictionData.Add($"predictionOutcome{i}VoteCount", prediction.Outcomes[i].VoteCount);
+                    predictionData.Add($"predictionOutcome{i}ReturnRate", prediction.Outcomes[i].ReturnRate);
+                }
+                if (prediction.State == Prediction.StateResolved)
+                {
+                    CPH.SetArgument($"predictionWinningOutcomeId", prediction.WinningOutcomeId);
+                    CPH.SetArgument($"predictionWinningOutcomeIndex", prediction.Outcomes.ToList().FindIndex(x => x.Id == prediction.WinningOutcomeId));
+                }
+                SendToQueue(new BotEvent
+                {
+                    ActionId = BotEventType.PredictionUpdated,
+                    Arguments = predictionData
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred when reading prediction data : {ex.Message}");
+            }
+        }
 
         private void UpdateActivityDB(EventUser user)
         {
@@ -1106,6 +1181,8 @@ namespace Kick.Bot
             public const string TitleChanged = "kickTitleChanged";
             public const string UserBanned = "kickBan";
             public const string UserUnbanned = "kickUnban";
+            public const string PredictionCreated = "kickPredictionCreated";
+            public const string PredictionUpdated = "kickPredictionUpdated";
         }
 
         internal class BotEvent

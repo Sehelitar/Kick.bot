@@ -21,6 +21,7 @@ using Models.API;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Kick.API
@@ -667,6 +668,105 @@ namespace Kick.API
                 throw new Exception(response.Message);
             }
             return response.Data.FailedRedemptionIds;
+        }
+        #endregion
+        
+        #region Predictions
+        public async Task<Prediction> CreatePrediction(Channel channel, Prediction prediction)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "title", prediction.Title },
+                { "duration", prediction.Duration },
+                { "outcomes", prediction.Outcomes.Select(p => p.Title).ToArray() }
+            };
+            var response = await ApiJsonPost<KickApiMessageOperationResponse<Prediction>>($"/api/v2/channels/{channel.Slug}/predictions", data);
+            if (response.Message != "Created")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data;
+        }
+        
+        public async Task<Prediction> GetLatestPrediction(Channel channel)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var response = await ApiGet<KickApiMessageOperationResponse<PredictionResponse>>($"/api/v2/channels/{channel.Slug}/predictions/latest");
+            if (response.Message != "Success")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data.Prediction;
+        }
+        
+        public async Task<Prediction[]> GetRecentPredictions(Channel channel)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var response = await ApiGet<KickApiMessageOperationResponse<PredictionsList>>($"/api/v2/channels/{channel.Slug}/predictions/recent");
+            if (response.Message != "Success")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data.Predictions;
+        }
+        
+        public async Task<Prediction> LockPrediction(Channel channel, string predictionId)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "state", Prediction.StateLocked }
+            };
+            var response = await ApiJsonPatch<KickApiMessageOperationResponse<Prediction>>($"/api/v2/channels/{channel.Slug}/predictions/{predictionId}", data);
+            if (response.Message != "Success")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data;
+        }
+        
+        public async Task<Prediction> CancelPrediction(Channel channel, string predictionId)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "state", Prediction.StateCanceled }
+            };
+            var response = await ApiJsonPatch<KickApiMessageOperationResponse<Prediction>>($"/api/v2/channels/{channel.Slug}/predictions/{predictionId}", data);
+            if (response.Message != "Success")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data;
+        }
+        
+        public async Task<Prediction> ResolvePrediction(Channel channel, string predictionId, string winningOutcomeId)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "state", Prediction.StateResolved },
+                { "winning_outcome_id", winningOutcomeId }
+            };
+            var response = await ApiJsonPatch<KickApiMessageOperationResponse<Prediction>>($"/api/v2/channels/{channel.Slug}/predictions/{predictionId}", data);
+            if (response.Message != "Success")
+            {
+                throw new Exception(response.Message);
+            }
+            return response.Data;
         }
         #endregion
     }

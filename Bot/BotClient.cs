@@ -88,6 +88,9 @@ namespace Kick.Bot
             
             CPH.RegisterCustomTrigger("[Kick] Reward Redeemed (Any)", BotEventListener.BotEventType.RewardRedeemed, new[] { "Kick", "Rewards" });
             
+            CPH.RegisterCustomTrigger("[Kick] Prediction Created", BotEventListener.BotEventType.PredictionCreated, new[] { "Kick", "Predictions" });
+            CPH.RegisterCustomTrigger("[Kick] Prediction Updated", BotEventListener.BotEventType.PredictionUpdated, new[] { "Kick", "Predictions" });
+            
             CPH.LogDebug("[Kick] Basic triggers registered.");
             
             CPH.LogDebug("[Kick] Starting UI thread...");
@@ -150,8 +153,17 @@ namespace Kick.Bot
                     .SetToastDuration(ToastDuration.Short)
                     .Show();
 
-                BroadcasterListener = await StartListeningToSelf();
-                CPH.LogDebug($"[Kick] Listener active.");
+                try
+                {
+                    BroadcasterListener = await StartListeningToSelf();
+                    CPH.LogDebug($"[Kick] Listener active.");
+                }
+                catch (Exception ex)
+                {
+                    CPH.LogError($"[Kick] An error occurred while starting listener : {ex}");
+                    return;
+                }
+
                 ReloadRewards();
             });
         }
@@ -1533,6 +1545,74 @@ namespace Kick.Bot
         }
         
         #region Rewards
+        public bool GetRewardsList(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("rewardEnabledOnly", out var enabledOnly))
+                    enabledOnly = false;
+                
+                Task<Reward[]> result = Client.GetRewardsList(channel, enabledOnly);
+                result.Wait();
+                var success = result.Status == TaskStatus.RanToCompletion;
+                if (success)
+                {
+                    for (var i = 0; i < result.Result.Length; ++i)
+                    {
+                        CPH.SetArgument($"reward{i}", result.Result[i].Id);
+                    }
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
+                return false;
+            }
+        }
+        
+        public bool GetReward(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("rewardId", out var hold))
+                    throw new Exception("missing argument, rewardId required");
+                
+                Task<Reward> result = Client.GetReward(channel, Convert.ToInt64(hold));
+                result.Wait();
+                var success = result.Status == TaskStatus.RanToCompletion;
+                if (success)
+                {
+                    var reward = result.Result;
+                    CPH.SetArgument("rewardTitle", reward.Title);
+                    CPH.SetArgument("rewardDescription", reward.Description);
+                    CPH.SetArgument("rewardBackgroundColor", reward.BackgroundColor);
+                    CPH.SetArgument("rewardShouldRedemptionsSkipRequestQueue", reward.ShouldRedemptionsSkipRequestQueue);
+                    CPH.SetArgument("rewardCost", reward.Cost);
+                    CPH.SetArgument("rewardPrompt", reward.Prompt);
+                    CPH.SetArgument("rewardIsUserInputRequired", reward.IsUserInputRequired);
+                    CPH.SetArgument("rewardIsPaused", reward.IsPaused);
+                    CPH.SetArgument("rewardIsEnabled", reward.IsEnabled);
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
+                return false;
+            }
+        }
+        
         public bool CreateReward(Dictionary<string, dynamic> args, Channel channel = null)
         {
             try
@@ -1676,7 +1756,7 @@ namespace Kick.Bot
                     channel = BroadcasterListener.Channel;
 
                 if (!args.TryGetValue("rewardId", out var hold))
-                    throw new Exception("missing argument, rewardTitle required");
+                    throw new Exception("missing argument, rewardId required");
                 
                 var result = Client.DeleteReward(channel, Convert.ToInt64(hold));
                 result.Wait();
@@ -1773,6 +1853,210 @@ namespace Kick.Bot
             catch (Exception ex)
             {
                 CPH.LogDebug($"[Kick] APIError : {ex}");
+                return false;
+            }
+        }
+        #endregion
+        
+        #region Predictions
+        public bool GetLatestPrediction(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                var result = Client.GetLatestPrediction(channel);
+                result.Wait();
+                var success = result.Status == TaskStatus.RanToCompletion;
+                if (success)
+                {
+                    var predi = result.Result;
+                    CPH.SetArgument("predictionId", predi.Id);
+                    CPH.SetArgument("predictionTitle", predi.Title);
+                    CPH.SetArgument("predictionState", predi.State);
+                    CPH.SetArgument("predictionDuration", predi.Duration);
+                    CPH.SetArgument("predictionCreatedAt", predi.CreatedAt);
+                    CPH.SetArgument("predictionUpdatedAt", predi.UpdatedAt);
+                    CPH.SetArgument("predictionLockedAt", predi.LockedAt);
+                    
+                    for (var i = 0; i < predi.Outcomes.Length; ++i)
+                    {
+                        CPH.SetArgument($"predictionOutcome{i}Id", predi.Outcomes[i].Id);
+                        CPH.SetArgument($"predictionOutcome{i}Title", predi.Outcomes[i].Title);
+                        CPH.SetArgument($"predictionOutcome{i}TotalVoteAmount", predi.Outcomes[i].TotalVoteAmount);
+                        CPH.SetArgument($"predictionOutcome{i}VoteCount", predi.Outcomes[i].VoteCount);
+                        CPH.SetArgument($"predictionOutcome{i}ReturnRate", predi.Outcomes[i].ReturnRate);
+                    }
+
+                    if (predi.State == Prediction.StateResolved)
+                    {
+                        CPH.SetArgument($"predictionWinningOutcomeId", predi.WinningOutcomeId);
+                        CPH.SetArgument($"predictionWinningOutcomeIndex", predi.Outcomes.ToList().FindIndex(x => x.Id == predi.WinningOutcomeId));
+                    }
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
+                return false;
+            }
+        }
+        
+        public bool GetRecentPredictions(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                var result = Client.GetRecentPredictions(channel);
+                result.Wait();
+                var success = result.Status == TaskStatus.RanToCompletion;
+                if (success)
+                {
+                    for (var i = 0; i < result.Result.Length; ++i)
+                    {
+                        var predi = result.Result[i];
+                        CPH.SetArgument($"prediction{i}Id", predi.Id);
+                        CPH.SetArgument($"prediction{i}Title", predi.Title);
+                        CPH.SetArgument($"prediction{i}Duration", predi.Duration);
+                        
+                        for (var j = 0; j < predi.Outcomes.Length; ++j)
+                        {
+                            CPH.SetArgument($"prediction{i}Outcome{j}Title", predi.Outcomes[i].Title);
+                        }
+                    }
+                    CPH.SetArgument($"predictionCount", result.Result.Length);
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
+                return false;
+            }
+        }
+        
+        public bool CreatePrediction(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                var prediction = new Prediction();
+                dynamic hold, hold2;
+                
+                if (!args.TryGetValue("predictionTitle", out hold))
+                    throw new Exception("missing argument, predictionTitle required");
+                prediction.Title = hold.ToString();
+                
+                if (!args.TryGetValue("predictionDuration", out hold))
+                    throw new Exception("missing argument, predictionDuration required");
+                prediction.Duration = Convert.ToInt64(hold);
+                
+                if (!args.TryGetValue("predictionOutcome0", out hold))
+                    throw new Exception("missing argument, predictionOutcome0 required");
+                if (!args.TryGetValue("predictionOutcome1", out hold2))
+                    throw new Exception("missing argument, predictionOutcome1 required");
+                
+                prediction.Outcomes = new[]
+                {
+                    new Outcome() { Title = hold.ToString() },
+                    new Outcome() { Title = hold2.ToString() }
+                };
+
+                var result = Client.CreatePrediction(channel, prediction);
+                result.Wait();
+                var success = result.Status == TaskStatus.RanToCompletion;
+                if (success)
+                {
+                    CPH.SetArgument("predictionId", result.Result.Id);
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
+                return false;
+            }
+        }
+        
+        public bool CancelPrediction(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("predictionId", out var predictionId))
+                    throw new Exception("missing argument, predictionId required");
+                
+                var result = Client.CancelPrediction(channel, predictionId.ToString());
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to cancel the prediction : {ex}");
+                return false;
+            }
+        }
+        
+        public bool LockPrediction(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("predictionId", out var predictionId))
+                    throw new Exception("missing argument, predictionId required");
+                
+                var result = Client.LockPrediction(channel, predictionId.ToString());
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to lock the prediction : {ex}");
+                return false;
+            }
+        }
+        
+        public bool ResolvePrediction(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+
+                if (!args.TryGetValue("predictionId", out var predictionId))
+                    throw new Exception("missing argument, predictionId required");
+                if (!args.TryGetValue("outcomeId", out var outcomeId))
+                    throw new Exception("missing argument, outcomeId required");
+                
+                var result = Client.ResolvePrediction(channel, predictionId.ToString(), outcomeId.ToString());
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to resolve the prediction : {ex}");
                 return false;
             }
         }

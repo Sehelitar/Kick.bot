@@ -23,6 +23,7 @@ using Kick.API.Events;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using Kick.API.Models;
 
 namespace Kick.API
 {
@@ -103,430 +104,319 @@ namespace Kick.API
         // [MOD] Changement de mode du chat
         public delegate void OnChatModeChangedHandler(ChatModeChangedEvent chatModeEvent);
         public event OnChatModeChangedHandler OnChatModeChanged;
-
+        
         // [MOD] Modification de la liste de termes bannis
         public delegate void OnWordBannedHandler(BannedWordEvent bannedWordEvent);
         public event OnWordBannedHandler OnWordBanned;
-
+        
         // [MOD] Raid entrant
         public delegate void OnRaidHandler(RaidEvent raidEvent);
         public event OnRaidHandler OnRaid;
-
+        
         // [MOD] Stream Infos Updated
         public delegate void OnStreamUpdatedHandler(LivestreamUpdatedEvent livestreamEvent);
         public event OnStreamUpdatedHandler OnStreamUpdated;
-
+        
+        public delegate void OnPredictionCreatedHandler(Models.Prediction prediction);
+        public event OnPredictionCreatedHandler OnPredictionCreated;
+        
+        public delegate void OnPredictionUpdatedHandler(Models.Prediction prediction);
+        public event OnPredictionUpdatedHandler OnPredictionUpdated;
+        
         private readonly Pusher _pusherClient;
-
+        private delegate void PusherEventHandler(string eventType, PusherEvent eventData);
+        
         private readonly Dictionary<long, API.Models.Channel>
             _channels = new Dictionary<long, API.Models.Channel>();
-
+        
+        private readonly Dictionary<Models.Channel, List<string>> _registrations = new Dictionary<Models.Channel, List<string>>();
+        
         public KickClient Client { get; }
         public bool IsConnected => _pusherClient.State == ConnectionState.Connected;
-
+        
         private readonly Dictionary<long, PollUpdateEvent> _currentPolls = new Dictionary<long, PollUpdateEvent>();
-
+        
         internal KickEventListener(KickClient client, IAuthorizer authorizer)
         {
             Client = client;
             Console.WriteLine($@"Pusher init, AppID: {KickAppId} (Kick.com), Cluster: {KickCluster}");
             _pusherClient = new Pusher(KickAppId, new PusherOptions() { Cluster = KickCluster, Authorizer = authorizer });
+            _pusherClient.BindAll(HandleEvent);
         }
         
-        public async Task JoinAsync(API.Models.Channel channel, bool asMod = true)
+        public async Task JoinAsync(API.Models.Channel channel)
         {
             if (_channels.ContainsKey(channel.Id))
                 return;
-            
-            _channels.Add(channel.Id, channel);
             Console.WriteLine($@"Connecting to chatroom {channel.Slug} ... (Chatroom: {channel.Chatroom.Id}, Channel: {channel.Id})");
+            await RegisterChannel(channel);
+        }
 
+        private async Task RegisterChannel(Models.Channel channel)
+        {
+            var channels = new List<string> {
+                $"chatrooms.{channel.Chatroom.Id}.v2",
+                $"predictions-channel-{channel.Id}"
+            };
+
+            if (channel.Role == "Channel Host" || channel.Role == "Moderator")
+            {
+                channels.AddRange(new[] {
+                    $"private-chatroom_{channel.Chatroom.Id}",
+                    $"private-channel_{channel.Id}"
+                });
+
+                if (channel.LiveStream != null)
+                {
+                    channels.AddRange(new[] {
+                        $"private-livestream_{channel.LiveStream.Id}",
+                        $"private-livestream-updated.{channel.LiveStream.Id}"
+                    });
+                }
+            }
+            
             if (_pusherClient.State != ConnectionState.Connected)
             {
                 await _pusherClient.ConnectAsync();
             }
-
-            Func<Task> streamListen = null;
-
-            // [PUB] Chatroom
-            try
+            
+            _channels[channel.Id] = channel;
+            if (!_registrations.ContainsKey(channel))
             {
-                var publicChatroomId = $"chatrooms.{channel.Chatroom.Id}.v2";
-                var chatroom = await _pusherClient.SubscribeAsync(publicChatroomId);
-                if (chatroom != null)
-                {
-                    chatroom.BindAll(delegate (string eventType, PusherEvent eventData)
-                    {
-                        switch (eventType)
-                        {
-                            case "App\\Events\\ChatMessageEvent":
-                                var message = JsonConvert.DeserializeObject<ChatMessageEvent>(eventData.Data);
-                                OnChatMessage?.Invoke(message);
-                                return;
-                            case "App\\Events\\MessageDeletedEvent":
-                            case "App\\Events\\ChatroomClearEvent":
-                                var deletedMessage = JsonConvert.DeserializeObject<ChatMessageDeletedEvent>(eventData.Data);
-                                OnChatMessageDeleted?.Invoke(deletedMessage);
-                                return;
-                            case "App\\Events\\ChatroomUpdatedEvent":
-                                var updatedChat = JsonConvert.DeserializeObject<ChatUpdatedEvent>(eventData.Data);
-                                OnChatUpdated?.Invoke(updatedChat);
-                                return;
-                            case "App\\Events\\SubscriptionEvent":
-                                // TODO
-                                // "{\"chatroom_id\":<id>,\"username\":\"<name>\",\"months\":<duration>}"
-                                return;
-                            case "App\\Events\\PollUpdateEvent":
-                                var pollUpdate = JsonConvert.DeserializeObject<PollUpdateEvent>(eventData.Data);
-                                pollUpdate.Channel = channel;
-                                PollUpdate(channel, pollUpdate);
-                                return;
-                            case "App\\Events\\PollDeleteEvent":
-                                PollUpdate(channel, null);
-                                return;
-                            case "App\\Events\\PinnedMessageCreatedEvent":
-                                var pinnedMessage = JsonConvert.DeserializeObject<PinnedMessageEvent>(eventData.Data);
-                                OnMessagePinned?.Invoke(pinnedMessage);
-                                return;
-                            case "App\\Events\\PinnedMessageDeletedEvent":
-                                OnMessageUnpinned?.Invoke();
-                                return;
-                            case "App\\Events\\UserBannedEvent":
-                            case "App\\Events\\UserUnbannedEvent":
-                                // ignored
-                                return;
-                            default:
-                                Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PubChat] Unknown event triggered => {eventType} : {eventData}");
-                                break;
-                        }
-
-                        try
-                        {
-                            Console.WriteLine($@"[PUB-CHAT] {eventType} : {eventData}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($@"[PUB-CHAT] {eventType}, exception raised : {ex.Message}");
-                        }
-                    });
-                    Console.WriteLine($@"Connected to chatroom. Welcome!");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
+                _registrations[channel] = new List<string>();
             }
 
-            // [PUB] Evènements de la chaine
-            try
+            foreach (var c in channels)
             {
-                var publicChannelId = $"channel.{channel.Id}";
-                var publicChannel = await _pusherClient.SubscribeAsync(publicChannelId);
-                if (publicChannel != null)
-                {
-                    publicChannel.BindAll(delegate (string eventType, PusherEvent eventData)
-                    {
-                        switch (eventType)
-                        {
-                            case "App\\Events\\ChannelSubscriptionEvent":
-                                // TODO
-                                // "{\"user_ids\":[<id>],\"username\":\"<user>\",\"channel_id\":<channelId>}"
-                                return;
-                            case "App\\Events\\StreamerIsLive":
-                                var startEvent = JsonConvert.DeserializeObject<LivestreamStartedEvent>(eventData.Data);
-                                OnStreamStarted?.Invoke(startEvent);
-
-                                var cinfo = Client.GetChannelInfos(channel.Slug);
-                                cinfo.RunSynchronously();
-                                channel = cinfo.Result;
-                                if(channel.LiveStream != null && streamListen != null)
-                                    streamListen().RunSynchronously();
-
-                                return;
-                            case "App\\Events\\StopStreamBroadcast":
-                                var endEvent = JsonConvert.DeserializeObject<LivestreamStoppedEvent>(eventData.Data);
-                                OnStreamEnded?.Invoke(endEvent);
-                                return;
-                            default:
-                                Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PubChannel] Unknown event triggered => {eventType} : {eventData}");
-                                return;
-                        }
-                    });
-                    Console.WriteLine($@"Connected to channels public events. Passive listening enabled.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());
-            }
-
-            if (asMod && (channel.Role == "Channel Host" || channel.Role == "Moderator"))
-            {
-                // [MOD] Chatroom
                 try
                 {
-                    var privateChatroomId = $"private-chatroom_{channel.Chatroom.Id}";
-                    var privChatroom = await _pusherClient.SubscribeAsync(privateChatroomId);
-                    if (privChatroom != null)
-                    {
-                        privChatroom.BindAll(delegate (string eventType, PusherEvent eventData)
-                        {
-                            ChatMode? modeChanged = null;
-
-                            switch (eventType)
-                            {
-                                case "BannedWordAdded":
-                                    var bwAdd = JsonConvert.DeserializeObject<BannedWordEvent>(eventData.Data);
-                                    OnWordBanned?.Invoke(bwAdd);
-                                    return;
-                                case "BannedWordDeleted":
-                                    var bwDel = JsonConvert.DeserializeObject<BannedWordEvent>(eventData.Data);
-                                    bwDel.IsWordBanned = false;
-                                    OnWordBanned?.Invoke(bwDel);
-                                    return;
-                                case "BannedUserAdded":
-                                case "BannedUserDeleted":
-                                case "UserTimeouted":
-                                    var message = JsonConvert.DeserializeObject<BannedUserEvent>(eventData.Data);
-                                    OnUserBanned?.Invoke(message);
-                                    return;
-                                case "MessageDeleted":
-                                    // TODO - Utilité ? Remonte déjà dans le flux public
-                                    break;
-                                case "SlowModeActivated":
-                                    modeChanged = ChatMode.SlowModeEnabled;
-                                    break;
-                                case "SlowModeDeactivated":
-                                    modeChanged = ChatMode.SlowModeDisabled;
-                                    break;
-                                case "EmotesModeActivated":
-                                    modeChanged = ChatMode.EmotesOnlyEnabled;
-                                    break;
-                                case "EmotesModeDeactivated":
-                                    modeChanged = ChatMode.EmotesOnlyDisabled;
-                                    break;
-                                case "FollowersModeActivated":
-                                    modeChanged = ChatMode.FollowersOnlyEnabled;
-                                    break;
-                                case "FollowersModeDeactivated":
-                                    modeChanged = ChatMode.FollowersOnlyDisabled;
-                                    break;
-                                case "SubscribersModeActivated":
-                                    modeChanged = ChatMode.SubsOnlyEnabled;
-                                    break;
-                                case "SubscribersModeDeactivated":
-                                    modeChanged = ChatMode.SubsOnlyDisabled;
-                                    break;
-                                case "AllowLinksActivated":
-                                    modeChanged = ChatMode.AllowLinksActivated;
-                                    break;
-                                case "AllowLinksDeactivated":
-                                    modeChanged = ChatMode.AllowLinksDeactivated;
-                                    break;
-                                case "MessagePinned":
-                                case "MessageUnpinned":
-                                case "PollCreated":
-                                case "PollDeleted":
-                                    // ignored, duplicate
-                                    break;
-                                default:
-                                    Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PrivChatroom] Unknown event triggered => {eventType} : {eventData}");
-                                    break;
-                            }
-
-                            if (modeChanged.HasValue)
-                            {
-                                var message = JsonConvert.DeserializeObject<ChatModeChangedEvent>(eventData.Data);
-                                message.ChatMode = modeChanged.Value;
-                                OnChatModeChanged?.Invoke(message);
-                                return;
-                            }
-
-                            try
-                            {
-                                Console.WriteLine($@"[MOD-CHAT] {eventType} : {eventData.Data}");
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($@"[MOD-CHAT] {eventType}, exception raised : {ex.Message}");
-                            }
-                        });
-                        Console.WriteLine($@"Connected to moderation events stream.");
-                    }
+                    // Already connected to this channel, ignore it
+                    if(_registrations[channel].Contains(c))
+                        continue;
+                    
+                    // Subscribe
+                    await _pusherClient.SubscribeAsync(c);
+                    
+                    // Keep track of subscribed channels
+                    _registrations[channel].Add(c);
+                    Console.WriteLine($@"Connected to {c}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex.ToString());
+                    // ignored
                 }
+            }
+        }
+        
+        private void HandleEvent(string eventType, PusherEvent eventData)
+        {
+            var pChannel = eventData.ChannelName;
+            var channel = _registrations
+                .Where(x => x.Value.Contains(eventData.ChannelName))
+                .Select(x => x.Key).FirstOrDefault();
 
-                // [MOD] Evènements de la chaine
-                try
-                {
-                    var privateChannelId = $"private-channel_{channel.Id}";
-                    var privChannel = await _pusherClient.SubscribeAsync(privateChannelId);
-                    if (privChannel != null)
-                    {
-                        privChannel.BindAll(delegate (string eventType, PusherEvent eventData)
-                        {
-                            switch (eventType)
-                            {
-                                case "FollowerAdded":
-                                    var followAdded = JsonConvert.DeserializeObject<ChannelFollowEvent>(eventData.Data);
-                                    OnViewerFollow?.Invoke(followAdded);
-                                    return;
-                                case "FollowerDeleted":
-                                    var followDeleted = JsonConvert.DeserializeObject<ChannelFollowEvent>(eventData.Data);
-                                    followDeleted.IsFollowing = false;
-                                    OnViewerFollow?.Invoke(followDeleted);
-                                    return;
-                                case "SubscriptionCreated":
-                                case "SubscriptionRenewed":
-                                    var newSub = JsonConvert.DeserializeObject<SubscriptionEvent>(eventData.Data);
-                                    OnSubscription?.Invoke(newSub);
-                                    return;
-                                case "SubscriptionGifted":
-                                    var newGift = JsonConvert.DeserializeObject<GiftedSubscriptionEvent>(eventData.Data);
-                                    OnSubGift?.Invoke(newGift);
-                                    return;
-                                case "RedeemedReward":
-                                    var newRedeem = JsonConvert.DeserializeObject<RewardRedeemedEvent>(eventData.Data);
-                                    OnRewardRedeemed?.Invoke(newRedeem);
-                                    return;
-                                default:
-                                    Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PrivChannel] Unknown event triggered => {eventType} : {eventData}");
-                                    break;
-                            }
-
-                            try
-                            {
-                                Console.WriteLine($@"[MOD-EVNT] {eventType} : {eventData.Data}");
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($@"[MOD-EVNT] {eventType}, exception raised : {ex.Message}");
-                            }
-                        });
-                        Console.WriteLine($@"Connected to channels private events.");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
-                }
-
-                // [MOD] Evènements de stream
-                streamListen = async () =>
-                {
-                    try
-                    {
-                        var privateLivestreamId = $"private-livestream_{channel.LiveStream.Id}";
-                        var privLivestream = await _pusherClient.SubscribeAsync(privateLivestreamId);
-                        if (privLivestream != null)
-                        {
-                            privLivestream.BindAll(delegate(string eventType, PusherEvent eventData)
-                            {
-                                switch (eventType)
-                                {
-                                    case "HostReceived":
-                                        var raid = JsonConvert.DeserializeObject<RaidEvent>(eventData.Data);
-                                        OnRaid?.Invoke(raid);
-                                        return;
-                                    case "TitleChanged":
-                                        return;
-                                    case "CategoryChanged":
-                                        return;
-                                    case "MatureModeActivated":
-                                        return;
-                                    case "MatureModeDeactivated":
-                                        return;
-                                    default:
-                                        Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PrivLivestream] Unknown event triggered => {eventType} : {eventData}");
-                                        break;
-                                }
-
-                                try
-                                {
-                                    Console.WriteLine($@"[MOD-LVSTR] {eventType} : {eventData.Data}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine($@"[MOD-LVSTR] {eventType}, exception raised : {ex.Message}");
-                                }
-                            });
-                            Console.WriteLine($@"Connected to private livestream events.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.ToString());
-                    }
-
-                    try
-                    {
-                        var privateLivestreamId = $"private-livestream-updated.{channel.LiveStream.Id}";
-                        var privLivestream = await _pusherClient.SubscribeAsync(privateLivestreamId);
-                        if (privLivestream != null)
-                        {
-                            privLivestream.BindAll(delegate(string eventType, PusherEvent eventData)
-                            {
-                                switch (eventType)
-                                {
-                                    case "App\\Events\\LiveStream\\UpdatedLiveStreamEvent":
-                                        var liveUpdate =
-                                            JsonConvert.DeserializeObject<LivestreamUpdatedEvent>(eventData.Data);
-                                        channel = Client.GetChannelInfos(channel.Slug).Result;
-                                        liveUpdate.Channel = channel;
-                                        OnStreamUpdated?.Invoke(liveUpdate);
-                                        return;
-                                    default:
-                                        Console.WriteLine($@"{DateTime.Now.ToShortTimeString()} [WS:PrivLivestream] Unknown event triggered => {eventType} : {eventData}");
-                                        break;
-                                }
-
-                                try
-                                {
-                                    Console.WriteLine($@"[MOD-LVSTR] {eventType} : {eventData.Data}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine(
-                                        $@"[MOD-LVSTR] {eventType}, Le traitement du contenu a provoqué une Exception : {ex.Message}");
-                                }
-                            });
-                            Console.WriteLine($@"Connected to secondary private livestream events.");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.ToString());
-                    }
-                };
-                if (channel.LiveStream != null)
-                    await streamListen();
+            if (channel == null)
+            {
+                Console.WriteLine($@"Event received for an unknown channel {pChannel}");
+                return;
+            }
+            
+            ChatMode? modeChanged = null;
+            
+            switch (eventType)
+            {
+                // chatrooms.<id>.v2
+                case "App\\Events\\ChatMessageEvent":
+                    var chatMessageEvent = JsonConvert.DeserializeObject<ChatMessageEvent>(eventData.Data);
+                    OnChatMessage?.Invoke(chatMessageEvent);
+                    return;
+                case "App\\Events\\MessageDeletedEvent":
+                case "App\\Events\\ChatroomClearEvent":
+                    var deletedMessage = JsonConvert.DeserializeObject<ChatMessageDeletedEvent>(eventData.Data);
+                    OnChatMessageDeleted?.Invoke(deletedMessage);
+                    return;
+                case "App\\Events\\ChatroomUpdatedEvent":
+                    var updatedChat = JsonConvert.DeserializeObject<ChatUpdatedEvent>(eventData.Data);
+                    OnChatUpdated?.Invoke(updatedChat);
+                    return;
+                case "App\\Events\\SubscriptionEvent":
+                    // TODO
+                    // "{\"chatroom_id\":<id>,\"username\":\"<name>\",\"months\":<duration>}"
+                    return;
+                case "App\\Events\\PollUpdateEvent":
+                    var pollUpdate = JsonConvert.DeserializeObject<PollUpdateEvent>(eventData.Data);
+                    pollUpdate.Channel = channel;
+                    PollUpdate(channel, pollUpdate);
+                    return;
+                case "App\\Events\\PollDeleteEvent":
+                    PollUpdate(channel, null);
+                    return;
+                case "App\\Events\\PinnedMessageCreatedEvent":
+                    var pinnedMessage = JsonConvert.DeserializeObject<PinnedMessageEvent>(eventData.Data);
+                    OnMessagePinned?.Invoke(pinnedMessage);
+                    return;
+                case "App\\Events\\PinnedMessageDeletedEvent":
+                    OnMessageUnpinned?.Invoke();
+                    return;
+                case "App\\Events\\UserBannedEvent":
+                case "App\\Events\\UserUnbannedEvent":
+                    // ignored
+                    return;
+                
+                // channel.<id>
+                case "App\\Events\\ChannelSubscriptionEvent":
+                    // TODO
+                    // "{\"user_ids\":[<id>],\"username\":\"<user>\",\"channel_id\":<channelId>}"
+                    return;
+                case "App\\Events\\StreamerIsLive":
+                    var startEvent = JsonConvert.DeserializeObject<LivestreamStartedEvent>(eventData.Data);
+                    OnStreamStarted?.Invoke(startEvent);
+                    channel = Client.GetChannelInfos(channel.Slug).Result;
+                    RegisterChannel(channel).Wait();
+                    return;
+                case "App\\Events\\StopStreamBroadcast":
+                    var endEvent = JsonConvert.DeserializeObject<LivestreamStoppedEvent>(eventData.Data);
+                    OnStreamEnded?.Invoke(endEvent);
+                    return;
+                
+                // private-chatroom_<id>
+                case "BannedWordAdded":
+                    var bwAdd = JsonConvert.DeserializeObject<BannedWordEvent>(eventData.Data);
+                    OnWordBanned?.Invoke(bwAdd);
+                    return;
+                case "BannedWordDeleted":
+                    var bwDel = JsonConvert.DeserializeObject<BannedWordEvent>(eventData.Data);
+                    bwDel.IsWordBanned = false;
+                    OnWordBanned?.Invoke(bwDel);
+                    return;
+                case "BannedUserAdded":
+                case "BannedUserDeleted":
+                case "UserTimeouted":
+                    var message = JsonConvert.DeserializeObject<BannedUserEvent>(eventData.Data);
+                    OnUserBanned?.Invoke(message);
+                    return;
+                case "MessageDeleted":
+                    // TODO - Utilité ? Remonte déjà dans le flux public
+                    break;
+                case "SlowModeActivated":
+                    modeChanged = ChatMode.SlowModeEnabled;
+                    break;
+                case "SlowModeDeactivated":
+                    modeChanged = ChatMode.SlowModeDisabled;
+                    break;
+                case "EmotesModeActivated":
+                    modeChanged = ChatMode.EmotesOnlyEnabled;
+                    break;
+                case "EmotesModeDeactivated":
+                    modeChanged = ChatMode.EmotesOnlyDisabled;
+                    break;
+                case "FollowersModeActivated":
+                    modeChanged = ChatMode.FollowersOnlyEnabled;
+                    break;
+                case "FollowersModeDeactivated":
+                    modeChanged = ChatMode.FollowersOnlyDisabled;
+                    break;
+                case "SubscribersModeActivated":
+                    modeChanged = ChatMode.SubsOnlyEnabled;
+                    break;
+                case "SubscribersModeDeactivated":
+                    modeChanged = ChatMode.SubsOnlyDisabled;
+                    break;
+                case "AllowLinksActivated":
+                    modeChanged = ChatMode.AllowLinksActivated;
+                    break;
+                case "AllowLinksDeactivated":
+                    modeChanged = ChatMode.AllowLinksDeactivated;
+                    break;
+                case "MessagePinned":
+                case "MessageUnpinned":
+                case "PollCreated":
+                case "PollDeleted":
+                    // ignored, duplicate
+                    break;
+                
+                // private-channel_<id>
+                case "FollowerAdded":
+                    var followAdded = JsonConvert.DeserializeObject<ChannelFollowEvent>(eventData.Data);
+                    OnViewerFollow?.Invoke(followAdded);
+                    return;
+                case "FollowerDeleted":
+                    var followDeleted = JsonConvert.DeserializeObject<ChannelFollowEvent>(eventData.Data);
+                    followDeleted.IsFollowing = false;
+                    OnViewerFollow?.Invoke(followDeleted);
+                    return;
+                case "SubscriptionCreated":
+                case "SubscriptionRenewed":
+                    var newSub = JsonConvert.DeserializeObject<SubscriptionEvent>(eventData.Data);
+                    OnSubscription?.Invoke(newSub);
+                    return;
+                case "SubscriptionGifted":
+                    var newGift = JsonConvert.DeserializeObject<GiftedSubscriptionEvent>(eventData.Data);
+                    OnSubGift?.Invoke(newGift);
+                    return;
+                case "RedeemedReward":
+                    var newRedeem = JsonConvert.DeserializeObject<RewardRedeemedEvent>(eventData.Data);
+                    OnRewardRedeemed?.Invoke(newRedeem);
+                    return;
+                
+                // private-livestream.<id>
+                case "HostReceived":
+                    var raid = JsonConvert.DeserializeObject<RaidEvent>(eventData.Data);
+                    OnRaid?.Invoke(raid);
+                    return;
+                case "TitleChanged":
+                case "CategoryChanged":
+                case "MatureModeActivated":
+                case "MatureModeDeactivated":
+                    return;
+                
+                // private-livestream-updated.<id>
+                case "App\\Events\\LiveStream\\UpdatedLiveStreamEvent":
+                    var liveUpdate =
+                        JsonConvert.DeserializeObject<LivestreamUpdatedEvent>(eventData.Data);
+                    channel = Client.GetChannelInfos(channel.Slug).Result;
+                    liveUpdate.Channel = channel;
+                    OnStreamUpdated?.Invoke(liveUpdate);
+                    return;
+                
+                // predictions-channel-<id>
+                case "PredictionCreated":
+                    var predCreated = JsonConvert.DeserializeObject<PredictionResponse>(eventData.Data);
+                    OnPredictionCreated?.Invoke(predCreated.Prediction);
+                    return;
+                case "PredictionUpdated":
+                    var predUpdated = JsonConvert.DeserializeObject<PredictionResponse>(eventData.Data);
+                    OnPredictionUpdated?.Invoke(predUpdated.Prediction);
+                    return;
+                
+                default:
+                    Console.WriteLine(
+                        $@"{DateTime.Now.ToShortTimeString()} [Pusher] Unknown event triggered => {eventType} : {eventData}");
+                    break;
+            }
+            
+            if (modeChanged.HasValue)
+            {
+                var message = JsonConvert.DeserializeObject<ChatModeChangedEvent>(eventData.Data);
+                message.ChatMode = modeChanged.Value;
+                OnChatModeChanged?.Invoke(message);
             }
         }
 
-        public async Task LeaveAsync(API.Models.Channel channel)
+        public async Task LeaveAsync(Models.Channel channel)
         {
             if (!_channels.ContainsKey(channel.Id))
                 return;
             
-            var publicChatroomId = $"chatrooms.{channel.Chatroom.Id}.v2";
-            var publicChannelId = $"channel.{channel.Id}";
-            var privateChatroomId = $"private-chatroom_{channel.Chatroom.Id}";
-            var privateChannelId = $"private-channel_{channel.Id}";
-
+            var registrations = _registrations[channel];
+            _registrations.Remove(channel);
+            _channels.Remove(channel.Id);
+            
             Console.WriteLine($@"Stopped listening for events from {channel.Slug}");
 
-            await _pusherClient.UnsubscribeAsync(publicChatroomId);
-            await _pusherClient.UnsubscribeAsync(publicChannelId);
-            await _pusherClient.UnsubscribeAsync(privateChatroomId);
-            await _pusherClient.UnsubscribeAsync(privateChannelId);
-
-            if (channel.LiveStream != null)
+            foreach (var registration in registrations)
             {
-                var privateLivestreamId = $"private-livestream_{channel.LiveStream.Id}";
-                await _pusherClient.UnsubscribeAsync(privateLivestreamId);
+                await _pusherClient.UnsubscribeAsync(registration);                
             }
         }
 
@@ -534,6 +424,7 @@ namespace Kick.API
         {
             Console.WriteLine($@"Connecting...");
             await _pusherClient.ConnectAsync();
+            _registrations.Clear();
             if (_channels.Any())
             {
                 var channels = new Dictionary<long, API.Models.Channel>(_channels);
