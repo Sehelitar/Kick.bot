@@ -138,6 +138,16 @@ public class CPHInline
     {
         return Client.GetClipVideoUrl(args);
     }
+    
+    public bool GetRewardsList()
+    {
+	    return Client.GetRewardsList(args);
+    }
+    
+    public bool GetReward()
+    {
+	    return Client.GetReward(args);
+    }
 
     public bool CreateReward()
     {
@@ -172,6 +182,36 @@ public class CPHInline
     public bool RejectRedemption()
     {
 	    return Client.RejectRedemption(args);
+    }
+    
+    public bool GetLatestPrediction()
+    {
+	    return Client.GetLatestPrediction(args);
+    }
+    
+    public bool GetRecentPredictions()
+    {
+	    return Client.GetRecentPredictions(args);
+    }
+    
+    public bool CreatePrediction()
+    {
+	    return Client.CreatePrediction(args);
+    }
+    
+    public bool CancelPrediction()
+    {
+	    return Client.CancelPrediction(args);
+    }
+    
+    public bool LockPrediction()
+    {
+	    return Client.LockPrediction(args);
+    }
+    
+    public bool ResolvePrediction()
+    {
+	    return Client.ResolvePrediction(args);
     }
 
     public bool GetFollowAgeInfo()
