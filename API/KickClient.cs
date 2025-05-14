@@ -741,7 +741,7 @@ namespace Kick.API
             
             var data = new Dictionary<string, dynamic>()
             {
-                { "state", Prediction.StateCanceled }
+                { "state", Prediction.StateCancelled }
             };
             var response = await ApiJsonPatch<KickApiMessageOperationResponse<Prediction>>($"/api/v2/channels/{channel.Slug}/predictions/{predictionId}", data);
             if (response.Message != "Success")

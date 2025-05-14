@@ -1114,6 +1114,7 @@ namespace Kick.Bot
                     { "predictionCreatedAt", prediction.CreatedAt },
                     { "predictionUpdatedAt", prediction.UpdatedAt },
                     { "predictionLockedAt", prediction.LockedAt },
+                    { "predictionOutcomesCount", prediction.Outcomes.Length },
 
                     { "eventSource", "kick" },
                     { "fromKick", true }
@@ -1131,9 +1132,24 @@ namespace Kick.Bot
                     CPH.SetArgument($"predictionWinningOutcomeId", prediction.WinningOutcomeId);
                     CPH.SetArgument($"predictionWinningOutcomeIndex", prediction.Outcomes.ToList().FindIndex(x => x.Id == prediction.WinningOutcomeId));
                 }
+
+                var eventName = BotEventType.PredictionUpdated;
+                switch (prediction.State)
+                {
+                    case Prediction.StateResolved:
+                        eventName = BotEventType.PredictionResolved;
+                        break;
+                    case Prediction.StateCancelled:
+                        eventName = BotEventType.PredictionCancelled;
+                        break;
+                    case Prediction.StateLocked:
+                        eventName = BotEventType.PredictionLocked;
+                        break;
+                }
+                
                 SendToQueue(new BotEvent
                 {
-                    ActionId = BotEventType.PredictionUpdated,
+                    ActionId = eventName,
                     Arguments = predictionData
                 });
             }
@@ -1183,6 +1199,9 @@ namespace Kick.Bot
             public const string UserUnbanned = "kickUnban";
             public const string PredictionCreated = "kickPredictionCreated";
             public const string PredictionUpdated = "kickPredictionUpdated";
+            public const string PredictionLocked = "kickPredictionLocked";
+            public const string PredictionResolved = "kickPredictionResolved";
+            public const string PredictionCancelled = "kickPredictionCancelled";
         }
 
         internal class BotEvent

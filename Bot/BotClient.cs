@@ -90,6 +90,9 @@ namespace Kick.Bot
             
             CPH.RegisterCustomTrigger("[Kick] Prediction Created", BotEventListener.BotEventType.PredictionCreated, new[] { "Kick", "Predictions" });
             CPH.RegisterCustomTrigger("[Kick] Prediction Updated", BotEventListener.BotEventType.PredictionUpdated, new[] { "Kick", "Predictions" });
+            CPH.RegisterCustomTrigger("[Kick] Prediction Locked", BotEventListener.BotEventType.PredictionLocked, new[] { "Kick", "Predictions" });
+            CPH.RegisterCustomTrigger("[Kick] Prediction Resolved", BotEventListener.BotEventType.PredictionResolved, new[] { "Kick", "Predictions" });
+            CPH.RegisterCustomTrigger("[Kick] Prediction Cancelled", BotEventListener.BotEventType.PredictionCancelled, new[] { "Kick", "Predictions" });
             
             CPH.LogDebug("[Kick] Basic triggers registered.");
             

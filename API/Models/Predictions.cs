@@ -8,7 +8,7 @@ namespace Kick.API.Models
         public const string StateActive = "ACTIVE";
         public const string StateLocked = "LOCKED";
         public const string StateResolved = "RESOLVED";
-        public const string StateCanceled = "CANCELLED";
+        public const string StateCancelled = "CANCELLED";
         
         [JsonProperty("id")]
         public string Id { get; internal set; }
