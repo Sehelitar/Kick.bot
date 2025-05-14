@@ -1597,12 +1597,12 @@ namespace Kick.Bot
                     CPH.SetArgument("rewardTitle", reward.Title);
                     CPH.SetArgument("rewardDescription", reward.Description);
                     CPH.SetArgument("rewardBackgroundColor", reward.BackgroundColor);
-                    CPH.SetArgument("rewardShouldRedemptionsSkipRequestQueue", reward.ShouldRedemptionsSkipRequestQueue);
+                    CPH.SetArgument("rewardRedemptionSkipQueue", reward.ShouldRedemptionsSkipRequestQueue);
                     CPH.SetArgument("rewardCost", reward.Cost);
                     CPH.SetArgument("rewardPrompt", reward.Prompt);
-                    CPH.SetArgument("rewardIsUserInputRequired", reward.IsUserInputRequired);
-                    CPH.SetArgument("rewardIsPaused", reward.IsPaused);
-                    CPH.SetArgument("rewardIsEnabled", reward.IsEnabled);
+                    CPH.SetArgument("rewardUserInputRequired", reward.IsUserInputRequired);
+                    CPH.SetArgument("rewardPaused", reward.IsPaused);
+                    CPH.SetArgument("rewardEnabled", reward.IsEnabled);
                 }
                 return success;
             }
@@ -1881,6 +1881,7 @@ namespace Kick.Bot
                     CPH.SetArgument("predictionCreatedAt", predi.CreatedAt);
                     CPH.SetArgument("predictionUpdatedAt", predi.UpdatedAt);
                     CPH.SetArgument("predictionLockedAt", predi.LockedAt);
+                    CPH.SetArgument("predictionOutcomesCount", predi.Outcomes.Length);
                     
                     for (var i = 0; i < predi.Outcomes.Length; ++i)
                     {
@@ -1926,13 +1927,14 @@ namespace Kick.Bot
                         CPH.SetArgument($"prediction{i}Id", predi.Id);
                         CPH.SetArgument($"prediction{i}Title", predi.Title);
                         CPH.SetArgument($"prediction{i}Duration", predi.Duration);
+                        CPH.SetArgument($"prediction{i}OutcomesCount", predi.Outcomes.Length);
                         
                         for (var j = 0; j < predi.Outcomes.Length; ++j)
                         {
                             CPH.SetArgument($"prediction{i}Outcome{j}Title", predi.Outcomes[i].Title);
                         }
                     }
-                    CPH.SetArgument($"predictionCount", result.Result.Length);
+                    CPH.SetArgument($"predictionsCount", result.Result.Length);
                 }
                 return success;
             }
