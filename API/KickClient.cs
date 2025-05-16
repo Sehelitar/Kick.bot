@@ -769,5 +769,49 @@ namespace Kick.API
             return response.Data;
         }
         #endregion
+        
+        #region Partners
+        public async Task EnableMultistream(Channel channel)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+
+            if (channel.LiveStream == null)
+            {
+                channel = GetChannelInfos(channel.Slug).Result;
+            }
+            if (channel.LiveStream == null)
+            {
+                throw new Exception("This channel must be live to enable multistreaming!");
+            }
+            
+            var response = await ApiPost<KickApiMessageOperationResponse<Dictionary<string, dynamic>>>($"/api/v2/livestreams/{channel.LiveStream.Slug}/multistream/enable");
+            if (response.Message != "Success" && response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+        }
+        
+        public async Task DisableMultistream(Channel channel)
+        {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
+            if (channel.LiveStream == null)
+            {
+                channel = GetChannelInfos(channel.Slug).Result;
+            }
+            if (channel.LiveStream == null)
+            {
+                throw new Exception("This channel must be live to disable multistreaming!");
+            }
+            
+            var response = await ApiPost<KickApiMessageOperationResponse<Dictionary<string, dynamic>>>($"/api/v2/livestreams/{channel.LiveStream.Slug}/multistream/disable");
+            if (response.Message != "Success" && response.Message != "OK")
+            {
+                throw new Exception(response.Message);
+            }
+        }
+        #endregion
     }
 }

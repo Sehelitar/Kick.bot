@@ -2066,5 +2066,47 @@ namespace Kick.Bot
             }
         }
         #endregion
+        
+        #region Partners
+        public bool EnableMultistream(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+                
+                var result = Client.EnableMultistream(channel);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to enable multistreaming : {ex}");
+                return false;
+            }
+        }
+        
+        public bool DisableMultistream(Dictionary<string, dynamic> args, Channel channel = null)
+        {
+            try
+            {
+                if (AuthenticatedUser == null)
+                    throw new Exception("authentication required");
+                if(channel == null)
+                    channel = BroadcasterListener.Channel;
+                
+                var result = Client.DisableMultistream(channel);
+                result.Wait();
+                return result.Status == TaskStatus.RanToCompletion;
+            }
+            catch (Exception ex)
+            {
+                CPH.LogDebug($"[Kick] An error occurred while trying to disable multistreaming : {ex}");
+                return false;
+            }
+        }
+        #endregion
     }
 }
