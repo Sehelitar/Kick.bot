@@ -236,4 +236,12 @@ public class CPHInline
     public bool GetBroadcasterInfos() {
 	    return Client.GetBroadcasterInfos(args);
     }
+    
+    public bool EnableMultistream() {
+	    return Client.EnableMultistream(args);
+    }
+    
+    public bool DisableMultistream() {
+	    return Client.DisableMultistream(args);
+    }
 }
