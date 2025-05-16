@@ -17,6 +17,7 @@
 
 using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -245,9 +246,13 @@ return true;
         {
             try
             {
-                // Génération du GUID unique
-                var actionGuid = Guid.NewGuid().ToString();
+                // Préparation de la tâche d'attente
+                var waitHandle = new EventWaitHandle(false, EventResetMode.ManualReset);
 
+                // Enregistrement du callback
+                string data = null;
+                Bridge.RegisterCallback(Callback, out var actionGuid);
+                
                 // Préparation du payload Javascript
                 if (jsPayload == null)
                 {
@@ -262,19 +267,6 @@ return true;
                                 actionGuid + "\", text));";
                 }
 
-                // Préparation de la tâche d'attente
-                var waitHandle = new EventWaitHandle(false, EventResetMode.ManualReset);
-
-                // Enregistrement du callback
-                string data = null;
-                Action<string> callback = delegate(string output)
-                {
-                    data = output;
-                    Bridge.UnregisterCallback(actionGuid);
-                    waitHandle.Set();
-                };
-                Bridge.RegisterCallback(actionGuid, callback);
-
                 // Execution du javascript
                 ExecuteScriptAsync(jsPayload);
 
@@ -285,6 +277,12 @@ return true;
                     throw new Exception("No data received.");
 
                 return data;
+
+                void Callback(string output)
+                {
+                    data = output;
+                    waitHandle.Set();
+                }
             }
             catch (ThreadAbortException)
             {
@@ -312,12 +310,16 @@ return true;
     [ComVisible(true)]
     public class AsyncJsBridge
     {
-        private Dictionary<string, Action<string>> _callbacks = new Dictionary<string, Action<string>>();
+        private ConcurrentDictionary<string, Action<string>> _callbacks = new ConcurrentDictionary<string, Action<string>>();
 
         [ComVisible(false)]
-        public void RegisterCallback(string id, Action<string> callback)
+        public void RegisterCallback(Action<string> callback, out string id)
         {
-            _callbacks.Add(id, callback);
+            do
+            {
+                id = Guid.NewGuid().ToString();
+            }
+            while (!_callbacks.TryAdd(id, callback));
             BotClient.CPH.LogDebug($"[Kick] Bridge callback registered (ID: {id})");
         }
 
@@ -325,13 +327,8 @@ return true;
         {
             if (!_callbacks.ContainsKey(id)) return;
             BotClient.CPH.LogDebug($"[Kick] Response received for callback ID {id}");
-            _callbacks[id].Invoke(data);
-        }
-
-        [ComVisible(false)]
-        public void UnregisterCallback(string id)
-        {
-            _callbacks.Remove(id);
+            if(_callbacks.TryRemove(id, out var target))
+                target.Invoke(data);
         }
     }
 }
