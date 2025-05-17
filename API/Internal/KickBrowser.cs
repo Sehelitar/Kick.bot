@@ -58,6 +58,7 @@ namespace Kick.API.Internal
             MaximizeBox = false;
             MinimizeBox = false;
             ControlBox = true;
+            TopMost = true;
             Size = new Size(700, 900);
             MinimumSize = new Size(400, 500);
             MaximumSize = new Size(1000, 1300);

@@ -53,7 +53,7 @@ namespace Kick.Bot
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show(ex.ToString(), "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show(ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         // ignored
                     }
                     finally
@@ -91,21 +91,6 @@ namespace Kick.Bot
                         {
                             BroadcasterKClient.Browser.BeginAuthentication();
                         }
-                    }
-                };
-                ConfigWindow.OnBroadcastSocketChangeRequested += async () =>
-                {
-                    if (BroadcasterKClient.GetEventListener().IsConnected)
-                    {
-                        await BroadcasterKClient.GetEventListener().DisconnectAsync();
-                        BotClient.CPH.LogDebug("[Kick] Broadcast socket disconnected.");
-                        RefreshUi();
-                    }
-                    else
-                    {
-                        await BroadcasterKClient.GetEventListener().ConnectAsync();
-                        BotClient.CPH.LogDebug("[Kick] Broadcast socket connected.");
-                        RefreshUi();
                     }
                 };
 
@@ -157,7 +142,7 @@ namespace Kick.Bot
             {
                 BotClient.CPH.LogDebug($"[Kick] Status : Broadcaster {BroadcasterKClient.IsAuthenticated} / Bot {BotKClient.IsAuthenticated}");
                 
-                var broadcasterName = "<Déconnecté>";
+                var broadcasterName = "<Disconnected>";
                 var broadcasterStatus = "-";
                 Bitmap broadcasterPictureBitmap = null;
                 if (BroadcasterKClient.IsAuthenticated)
@@ -193,7 +178,7 @@ namespace Kick.Bot
                     BotClient.CPH.LogDebug($"[Kick] Broadcaster status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
                 }
 
-                var botName = "<Déconnecté>";
+                var botName = "<Disconnected>";
                 var botStatus = "-";
                 Bitmap botPictureBitmap = null;
                 if (BotKClient.IsAuthenticated)
@@ -254,9 +239,6 @@ namespace Kick.Bot
                                 firstMatch.Image = broadcasterPictureBitmap;
                         }
                     }
-                    matches = ConfigWindow.Controls.Find("broadcasterPusherDisconnect", true);
-                    if (matches.Any())
-                        matches.First().Enabled = false; //BroadcasterKClient.IsAuthenticated && BroadcasterKClient.GetEventListener().IsConnected;
 
                     matches = ConfigWindow.Controls.Find("botName", true);
                     if (matches.Any())
@@ -288,8 +270,14 @@ namespace Kick.Bot
             ConfigWindow.Invoke((Action)(() =>
             {
                 var matches = ConfigWindow.Controls.Find("broadcasterSocketStatus", true);
-                if (matches.Any())
-                    matches.First().BackColor = BroadcasterKClient.IsAuthenticated && BroadcasterKClient.GetEventListener().IsConnected ? Color.SpringGreen : Color.Red;
+                if (!matches.Any()) return;
+
+                var control = matches.First();
+                var isConnected = BroadcasterKClient.IsAuthenticated &&
+                                  BroadcasterKClient.GetEventListener().IsConnected;
+                
+                ConfigWindow.ToolTip.SetToolTip(control, isConnected ? "Connected" : "Disconnected");
+                control.BackColor = isConnected ? Color.SpringGreen : Color.Red;
             }));
             BotClient.CPH.LogDebug("[Kick] UI refreshed.");
         }

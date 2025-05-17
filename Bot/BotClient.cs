@@ -315,6 +315,18 @@ namespace Kick.Bot
                 if (!args.TryGetValue("message", out var message))
                     throw new Exception("missing argument, message required");
                 
+                if (!args.TryGetValue("messageId", out var messageId))
+                    throw new Exception("missing argument, messageId required");
+                
+                if (!args.TryGetValue("reply", out var reply))
+                    throw new Exception("missing argument, reply required");
+                
+                if (!args.TryGetValue("user", out var user))
+                    throw new Exception("missing argument, user required");
+                
+                if (!args.TryGetValue("userId", out var userId))
+                    throw new Exception("missing argument, userId required");
+                
                 if (args.TryGetValue("useBotProfile", out var useBotProfile))
                     useBotProfile = Convert.ToBoolean(useBotProfile);
                 else
@@ -324,20 +336,20 @@ namespace Kick.Bot
                 if(AltClient.Browser.IsAuthenticated && useBotProfile)
                     result = AltClient.SendReplyToChatroom(
                         chatroomId,
-                        Convert.ToString(args["reply"]),
-                        Convert.ToString(args["msgId"]),
+                        Convert.ToString(reply),
+                        Convert.ToString(messageId),
                         Convert.ToString(message),
-                        Convert.ToInt64(args["userId"]),
-                        Convert.ToString(args["user"])
+                        Convert.ToInt64(userId),
+                        Convert.ToString(user)
                     );
                 else
                     result = Client.SendReplyToChatroom(
                         chatroomId,
-                        Convert.ToString(args["reply"]),
-                        Convert.ToString(args["msgId"]),
+                        Convert.ToString(reply),
+                        Convert.ToString(messageId),
                         Convert.ToString(message),
-                        Convert.ToInt64(args["userId"]),
-                        Convert.ToString(args["user"])
+                        Convert.ToInt64(userId),
+                        Convert.ToString(user)
                     );
 
                 result.Wait();

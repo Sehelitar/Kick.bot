@@ -34,7 +34,6 @@ namespace Kick.Bot
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.broadcasterServices = new System.Windows.Forms.GroupBox();
             this.broadcasterSocketStatus = new System.Windows.Forms.PictureBox();
-            this.broadcasterPusherDisconnect = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.broadcasterLoginBtn = new System.Windows.Forms.Button();
             this.broadcasterStatus = new System.Windows.Forms.Label();
@@ -56,14 +55,16 @@ namespace Kick.Bot
             // 
             // groupBox1
             // 
+            this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) | System.Windows.Forms.AnchorStyles.Left)));
             this.groupBox1.Controls.Add(this.broadcasterServices);
             this.groupBox1.Controls.Add(this.broadcasterLoginBtn);
             this.groupBox1.Controls.Add(this.broadcasterStatus);
             this.groupBox1.Controls.Add(this.broadcasterName);
             this.groupBox1.Controls.Add(this.broadcasterPicture);
             this.groupBox1.Location = new System.Drawing.Point(12, 12);
+            this.groupBox1.Margin = new System.Windows.Forms.Padding(10);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(386, 299);
+            this.groupBox1.Size = new System.Drawing.Size(386, 300);
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Broadcaster Account";
@@ -71,7 +72,6 @@ namespace Kick.Bot
             // broadcasterServices
             // 
             this.broadcasterServices.Controls.Add(this.broadcasterSocketStatus);
-            this.broadcasterServices.Controls.Add(this.broadcasterPusherDisconnect);
             this.broadcasterServices.Controls.Add(this.label1);
             this.broadcasterServices.Location = new System.Drawing.Point(20, 209);
             this.broadcasterServices.Name = "broadcasterServices";
@@ -83,22 +83,11 @@ namespace Kick.Bot
             // broadcasterSocketStatus
             // 
             this.broadcasterSocketStatus.BackColor = System.Drawing.Color.Red;
-            this.broadcasterSocketStatus.Location = new System.Drawing.Point(183, 33);
+            this.broadcasterSocketStatus.Location = new System.Drawing.Point(315, 33);
             this.broadcasterSocketStatus.Name = "broadcasterSocketStatus";
             this.broadcasterSocketStatus.Size = new System.Drawing.Size(16, 16);
             this.broadcasterSocketStatus.TabIndex = 2;
             this.broadcasterSocketStatus.TabStop = false;
-            // 
-            // broadcasterPusherDisconnect
-            // 
-            this.broadcasterPusherDisconnect.Enabled = false;
-            this.broadcasterPusherDisconnect.Location = new System.Drawing.Point(208, 22);
-            this.broadcasterPusherDisconnect.Name = "broadcasterPusherDisconnect";
-            this.broadcasterPusherDisconnect.Size = new System.Drawing.Size(126, 38);
-            this.broadcasterPusherDisconnect.TabIndex = 1;
-            this.broadcasterPusherDisconnect.Text = "Disconnect";
-            this.broadcasterPusherDisconnect.UseVisualStyleBackColor = true;
-            this.broadcasterPusherDisconnect.Click += new System.EventHandler(this.broadcasterPusherDisconnect_Click);
             // 
             // label1
             // 
@@ -149,13 +138,14 @@ namespace Kick.Bot
             // 
             // groupBox2
             // 
+            this.groupBox2.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBox2.Controls.Add(this.botLoginBtn);
             this.groupBox2.Controls.Add(this.botStatus);
             this.groupBox2.Controls.Add(this.botName);
             this.groupBox2.Controls.Add(this.botPicture);
-            this.groupBox2.Location = new System.Drawing.Point(404, 12);
+            this.groupBox2.Location = new System.Drawing.Point(413, 12);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(386, 219);
+            this.groupBox2.Size = new System.Drawing.Size(382, 223);
             this.groupBox2.TabIndex = 1;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Bot Account";
@@ -199,7 +189,8 @@ namespace Kick.Bot
             // 
             // btnClose
             // 
-            this.btnClose.Location = new System.Drawing.Point(625, 261);
+            this.btnClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnClose.Location = new System.Drawing.Point(630, 262);
             this.btnClose.Name = "btnClose";
             this.btnClose.Size = new System.Drawing.Size(165, 50);
             this.btnClose.TabIndex = 2;
@@ -210,17 +201,20 @@ namespace Kick.Bot
             // PluginConfig
             // 
             this.AcceptButton = this.btnClose;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(802, 324);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            this.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.ClientSize = new System.Drawing.Size(807, 324);
             this.ControlBox = false;
             this.Controls.Add(this.btnClose);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
+            this.MinimumSize = new System.Drawing.Size(829, 380);
             this.Name = "PluginConfig";
+            this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.Text = "Kick.bot Configuration";
+            this.TopMost = true;
             this.groupBox1.ResumeLayout(false);
             this.broadcasterServices.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.broadcasterSocketStatus)).EndInit();
@@ -233,8 +227,6 @@ namespace Kick.Bot
         private System.Windows.Forms.Button btnClose;
 
         private System.Windows.Forms.PictureBox broadcasterSocketStatus;
-
-        private System.Windows.Forms.Button broadcasterPusherDisconnect;
 
         private System.Windows.Forms.Label label1;
 
