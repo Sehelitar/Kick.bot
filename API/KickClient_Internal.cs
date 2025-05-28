@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023 Sehelitar
+    Copyright (C) 2023-2025 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -21,8 +21,6 @@ using System;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Threading;
-using Kick.Bot;
 
 namespace Kick.API
 {
@@ -183,7 +181,7 @@ namespace Kick.API
         internal class KickApiOperationResponse<T>
         {
             [JsonProperty("data")]
-            public T Data;
+            public T Data  { get; set; }
             [JsonProperty("status")]
             public KickApiOperationStatus Status { get; set; }
         }
@@ -191,7 +189,7 @@ namespace Kick.API
         internal class KickApiMessageOperationResponse<T>
         {
             [JsonProperty("data")]
-            public T Data;
+            public T Data { get; set; }
             [JsonProperty("message")]
             public string Message { get; set; }
         }

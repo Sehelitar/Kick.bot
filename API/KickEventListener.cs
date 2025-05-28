@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023 Sehelitar
+    Copyright (C) 2023-2025 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -94,8 +94,8 @@ namespace Kick.API
         public event OnRewardRedeemedHandler OnRewardRedeemed;
 
         // [MOD] Termes bloqués
-        public delegate void OnBannedWordChangedHandler(BannedWordEvent bannedWordEvent);
-        public event OnBannedWordChangedHandler OnBannedWordChanged;
+        /*public delegate void OnBannedWordChangedHandler(BannedWordEvent bannedWordEvent);
+        public event OnBannedWordChangedHandler OnBannedWordChanged;*/
 
         // [MOD] Bannissement
         public delegate void OnUserBannedHandler(BannedUserEvent bannedUserEvent);
@@ -117,17 +117,17 @@ namespace Kick.API
         public delegate void OnStreamUpdatedHandler(LivestreamUpdatedEvent livestreamEvent);
         public event OnStreamUpdatedHandler OnStreamUpdated;
         
-        public delegate void OnPredictionCreatedHandler(Models.Prediction prediction);
+        public delegate void OnPredictionCreatedHandler(Prediction prediction);
         public event OnPredictionCreatedHandler OnPredictionCreated;
         
-        public delegate void OnPredictionUpdatedHandler(Models.Prediction prediction);
+        public delegate void OnPredictionUpdatedHandler(Prediction prediction);
         public event OnPredictionUpdatedHandler OnPredictionUpdated;
         
         private readonly Pusher _pusherClient;
-        private delegate void PusherEventHandler(string eventType, PusherEvent eventData);
+        //private delegate void PusherEventHandler(string eventType, PusherEvent eventData);
         
-        private readonly Dictionary<long, API.Models.Channel>
-            _channels = new Dictionary<long, API.Models.Channel>();
+        private readonly Dictionary<long, Models.Channel>
+            _channels = new Dictionary<long, Models.Channel>();
         
         private readonly Dictionary<Models.Channel, List<string>> _registrations = new Dictionary<Models.Channel, List<string>>();
         
@@ -144,7 +144,7 @@ namespace Kick.API
             _pusherClient.BindAll(HandleEvent);
         }
         
-        public async Task JoinAsync(API.Models.Channel channel)
+        public async Task JoinAsync(Models.Channel channel)
         {
             if (_channels.ContainsKey(channel.Id))
                 return;
@@ -201,7 +201,7 @@ namespace Kick.API
                     _registrations[channel].Add(c);
                     Console.WriteLine($@"Connected to {c}");
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     // ignored
                 }
@@ -427,7 +427,7 @@ namespace Kick.API
             _registrations.Clear();
             if (_channels.Any())
             {
-                var channels = new Dictionary<long, API.Models.Channel>(_channels);
+                var channels = new Dictionary<long, Models.Channel>(_channels);
                 _channels.Clear();
                 foreach (var channel in channels)
                 {
@@ -444,7 +444,7 @@ namespace Kick.API
             Console.WriteLine($@"Disconnected.");
         }
 
-        private void PollUpdate(API.Models.Channel channel, PollUpdateEvent pollUpdateEvent)
+        private void PollUpdate(Models.Channel channel, PollUpdateEvent pollUpdateEvent)
         {
             if(!_currentPolls.ContainsKey(channel.Id))
             {

@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023-2024 Sehelitar
+    Copyright (C) 2023-2025 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -109,7 +109,7 @@ namespace Kick.Bot
 
                                 // Correspondance exacte
                                 case 1:
-                                    if (String.Compare(chatMessageEvent.Content, textCommand, botCommand.CommandInfo.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase) == 0)
+                                    if (string.Compare(chatMessageEvent.Content, textCommand, botCommand.CommandInfo.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase) == 0)
                                     {
                                         textCommandMatch = true;
                                         inputCommand = chatMessageEvent.Content.Trim();
@@ -282,6 +282,7 @@ namespace Kick.Bot
                     { "eventSource", "command" },
 
                     { "msgId", chatMessageEvent.Id },
+                    { "message", chatMessageEvent.Content },
                     { "chatroomId", chatMessageEvent.ChatroomId },
                     { "role", role },
                     { "counter", globalCurrentCounter },

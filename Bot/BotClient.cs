@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023-2024 Sehelitar
+    Copyright (C) 2023-2025 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -21,25 +21,20 @@ using Kick.API.Models;
 using Streamer.bot.Plugin.Interface;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Drawing;
 using System.Net;
 using System.Threading.Tasks;
-using System.IO;
-using System.Drawing.Imaging;
 using Microsoft.Toolkit.Uwp.Notifications;
 using System.Linq;
 using LiteDB;
 using System.Text.RegularExpressions;
 using System.Text;
-using System.Runtime.Remoting;
-using Kick.Properties;
 using Newtonsoft.Json;
 
 namespace Kick.Bot
 {
     public sealed class BotClient
     {
+        // ReSharper disable once InconsistentNaming
         public static IInlineInvokeProxy CPH;
         
         internal static PluginUi GlobalPluginUi;
@@ -142,17 +137,9 @@ namespace Kick.Bot
             {
                 AuthenticatedUser = await Client.GetCurrentUserInfos();
                 CPH.LogDebug($"[Kick] Connected as {AuthenticatedUser.Username}");
-                var target = Path.GetTempPath() + "KickLogo.png";
                 new ToastContentBuilder()
                     .AddText("Kick.bot")
                     .AddText($"Successfuly connected as {AuthenticatedUser.Username}")
-                    /*.AddAppLogoOverride(
-                        new Uri("pack://application,,,/Resources/kick.png", UriKind.Absolute),
-                        ToastGenericAppLogoCrop.None,
-                        "Kick.bot",
-                        true
-                    )*/
-                    //.AddAppLogoOverride(new Uri(target), ToastGenericAppLogoCrop.None)
                     .SetToastDuration(ToastDuration.Short)
                     .Show();
 
@@ -301,10 +288,9 @@ namespace Kick.Bot
             {
                 if (AuthenticatedUser == null)
                     throw new Exception("authentication required");
-                
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
-
+                
                 if (args.TryGetValue("chatroomId", out var chatroomId))
                     chatroomId = Convert.ToInt64(chatroomId);
                 else if (channel != null)
@@ -315,8 +301,8 @@ namespace Kick.Bot
                 if (!args.TryGetValue("message", out var message))
                     throw new Exception("missing argument, message required");
                 
-                if (!args.TryGetValue("messageId", out var messageId))
-                    throw new Exception("missing argument, messageId required");
+                if (!args.TryGetValue("msgId", out var msgId))
+                    throw new Exception("missing argument, msgId required");
                 
                 if (!args.TryGetValue("reply", out var reply))
                     throw new Exception("missing argument, reply required");
@@ -331,13 +317,13 @@ namespace Kick.Bot
                     useBotProfile = Convert.ToBoolean(useBotProfile);
                 else
                     useBotProfile = true;
-
+                
                 Task<ChatMessageEvent> result;
                 if(AltClient.Browser.IsAuthenticated && useBotProfile)
                     result = AltClient.SendReplyToChatroom(
                         chatroomId,
                         Convert.ToString(reply),
-                        Convert.ToString(messageId),
+                        Convert.ToString(msgId),
                         Convert.ToString(message),
                         Convert.ToInt64(userId),
                         Convert.ToString(user)
@@ -346,7 +332,7 @@ namespace Kick.Bot
                     result = Client.SendReplyToChatroom(
                         chatroomId,
                         Convert.ToString(reply),
-                        Convert.ToString(messageId),
+                        Convert.ToString(msgId),
                         Convert.ToString(message),
                         Convert.ToInt64(userId),
                         Convert.ToString(user)
@@ -425,7 +411,7 @@ namespace Kick.Bot
             }
         }
 
-        private bool GetKickChannelInfos(Dictionary<string, dynamic> args, Channel channel, string username, bool isSlug = false)
+        private bool GetKickChannelInfos(Dictionary<string, dynamic> _, Channel channel, string username, bool isSlug = false)
         {
             try
             {
@@ -438,8 +424,8 @@ namespace Kick.Bot
                 if(username.StartsWith("@"))
                     username = username.Substring(1);
 
-                Channel channelInfos = null;
-                ChannelUser userInfos = null;
+                Channel channelInfos;
+                ChannelUser userInfos;
 
                 if(isSlug)
                 {
@@ -1269,7 +1255,7 @@ namespace Kick.Bot
                 if (!args.TryGetValue("pinDuration", out var duration))
                     duration = 120;
 
-                var originalMessage = Newtonsoft.Json.JsonConvert.DeserializeObject<ChatMessageEvent>(message);
+                var originalMessage = JsonConvert.DeserializeObject<ChatMessageEvent>(message);
                 var result = Client.PinMessage(channel, originalMessage, duration);
                 result.Wait();
                 return result.Status == TaskStatus.RanToCompletion;
@@ -1793,8 +1779,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                dynamic hold = null;
-                args.TryGetValue("rewardId", out hold);
+                args.TryGetValue("rewardId", out var hold);
 
                 var result = Client.GetRedemptionsList(channel, hold);
                 result.Wait();

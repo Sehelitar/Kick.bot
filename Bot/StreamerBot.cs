@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023-2024 Sehelitar
+    Copyright (C) 2023-2025 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -95,7 +95,7 @@ namespace Kick.Bot
         private static void LoadCommandsSettings()
         {
             BotClient.CPH?.LogVerbose("[Kick] Loading chat commands");
-            var fs = new FileStream("./data/commands.json", FileMode.Open);
+            var fs = new FileStream("./data/commands.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();
             _commands = JsonConvert.DeserializeObject<StreamerBotCommands>(config);
@@ -113,7 +113,7 @@ namespace Kick.Bot
         private static void LoadSettings()
         {
             BotClient.CPH?.LogVerbose("[Kick] Loading main cofiguration");
-            var fs = new FileStream("./data/settings.json", FileMode.Open);
+            var fs = new FileStream("./data/settings.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();
             _settings = JsonConvert.DeserializeObject<StreamerBotSettings>(config);

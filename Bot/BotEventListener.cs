@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023-2024 Sehelitar
+    Copyright (C) 2023-2025 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -97,6 +97,12 @@ namespace Kick.Bot
             {
                 if (message.ChatroomId != Channel.Chatroom.Id)
                     return;
+
+                if ((from oldMsg in _messagesHistory where oldMsg.Id == message.Id select oldMsg).Any())
+                {
+                    // We already saw this message, ignore it
+                    return;
+                }
 
                 if (_messagesHistory.Count >= 300)
                     _messagesHistory.Dequeue();
