@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023-2024 Sehelitar
+    Copyright (C) 2023-2025 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -37,7 +37,7 @@ namespace Kick.Bot
                 {
                     Load();
                 }
-                return _commands.Commands;
+                return _commands?.Commands ?? new List<StreamerBotCommand>();
             }
         }
 
@@ -73,26 +73,29 @@ namespace Kick.Bot
             };
             _configWatcher.Changed += delegate (object sender, FileSystemEventArgs e)
             {
-                if (e.Name == "commands.json")
-                    LoadCommandsSettings();
-                if (e.Name == "settings.json")
-                    LoadSettings();
+                switch (e.Name)
+                {
+                    case "commands.json":
+                        LoadCommandsSettings();
+                        break;
+                    case "settings.json":
+                        LoadSettings();
+                        break;
+                }
             };
         }
 
         public static void StopWatcher()
         {
-            if (_configWatcher != null)
-            {
-                _configWatcher.Dispose();
-                _configWatcher = null;
-            }
+            if (_configWatcher == null) return;
+            _configWatcher.Dispose();
+            _configWatcher = null;
         }
 
         private static void LoadCommandsSettings()
         {
             BotClient.CPH?.LogVerbose("[Kick] Loading chat commands");
-            var fs = new FileStream("./data/commands.json", FileMode.Open);
+            var fs = new FileStream("./data/commands.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();
             _commands = JsonConvert.DeserializeObject<StreamerBotCommands>(config);
@@ -110,7 +113,7 @@ namespace Kick.Bot
         private static void LoadSettings()
         {
             BotClient.CPH?.LogVerbose("[Kick] Loading main cofiguration");
-            var fs = new FileStream("./data/settings.json", FileMode.Open);
+            var fs = new FileStream("./data/settings.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();
             _settings = JsonConvert.DeserializeObject<StreamerBotSettings>(config);

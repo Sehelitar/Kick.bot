@@ -1,5 +1,5 @@
 ﻿/*
-    Copyright (C) 2023-2024 Sehelitar
+    Copyright (C) 2023-2025 Sehelitar
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published
@@ -19,55 +19,74 @@ using Streamer.bot.Plugin.Interface;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Kick.Models.Events;
-using Kick.Models.API;
+using Kick.API;
+using Kick.API.Events;
+using Kick.API.Models;
 using System.Linq;
 
 namespace Kick.Bot
 {
-    public sealed partial class BotEventListener
+    public sealed class BotEventListener
     {
-        internal static IInlineInvokeProxy CPH { get { return BotClient.CPH; } }
+        internal static IInlineInvokeProxy CPH => BotClient.CPH;
 
-        private readonly KickEventListener EventListener = null;
+        private readonly KickEventListener _eventListener = null;
         public Channel Channel;
 
-        private readonly List<long> Followers = new List<long>();
-        private readonly Queue<ChatMessageEvent> messagesHistory = new Queue<ChatMessageEvent>(300);
+        private readonly List<long> _followers = new List<long>();
+        private readonly Queue<ChatMessageEvent> _messagesHistory = new Queue<ChatMessageEvent>(300);
 
         internal BotEventListener(KickEventListener listener, Channel channel)
         {
-            EventListener = listener;
+            _eventListener = listener;
             Channel = channel;
 
-            EventListener.OnViewerFollow += Kick_OnViewerFollow;
-            EventListener.OnChatMessage += Kick_OnChatMessage;
-            EventListener.OnChatMessageDeleted += Kick_OnChatMessageDeleted;
-            EventListener.OnSubscription += Kick_OnSubscription;
-            EventListener.OnSubGift += Kick_OnSubGift;
-            EventListener.OnUserBanned += Kick_OnUserBanned;
-            EventListener.OnChatUpdated += Kick_OnChatUpdated;
-            EventListener.OnPollCreated += Kick_OnPollCreated;
-            EventListener.OnPollUpdated += Kick_OnPollUpdated;
-            EventListener.OnPollCompleted += Kick_OnPollCompleted;
-            EventListener.OnPollCancelled += Kick_OnPollCancelled;
-            EventListener.OnStreamStarted += Kick_OnStreamStarted;
-            EventListener.OnStreamEnded += Kick_OnStreamEnded;
-            EventListener.OnStreamUpdated += Kick_OnStreamUpdated;
-            EventListener.OnRaid += Kick_OnRaid;
-            EventListener.OnMessagePinned += Kick_OnMessagePinned;
-            EventListener.OnMessageUnpinned += Kick_OnMessageUnpinned;
+            _eventListener.OnChatMessage += Kick_OnChatMessage;
+            _eventListener.OnChatMessageDeleted += Kick_OnChatMessageDeleted;
+            _eventListener.OnChatUpdated += Kick_OnChatUpdated;
+            _eventListener.OnChatModeChanged += Kick_OnChatModeChanged;
+            _eventListener.OnMessagePinned += Kick_OnMessagePinned;
+            _eventListener.OnMessageUnpinned += Kick_OnMessageUnpinned;
+            _eventListener.OnPollCancelled += Kick_OnPollCancelled;
+            _eventListener.OnPollCompleted += Kick_OnPollCompleted;
+            _eventListener.OnPollCreated += Kick_OnPollCreated;
+            _eventListener.OnPollUpdated += Kick_OnPollUpdated;
+            _eventListener.OnRaid += Kick_OnRaid;
+            _eventListener.OnRewardRedeemed += Kick_OnRewardRedeemed;
+            _eventListener.OnStreamEnded += Kick_OnStreamEnded;
+            _eventListener.OnStreamStarted += Kick_OnStreamStarted;
+            _eventListener.OnStreamUpdated += Kick_OnStreamUpdated;
+            _eventListener.OnSubGift += Kick_OnSubGift;
+            _eventListener.OnSubscription += Kick_OnSubscription;
+            _eventListener.OnUserBanned += Kick_OnUserBanned;
+            _eventListener.OnViewerFollow += Kick_OnViewerFollow;
+            _eventListener.OnPredictionCreated += Kick_OnPredictionCreated;
+            _eventListener.OnPredictionUpdated += Kick_OnPredictionUpdated;
 
-            EventListener.JoinAsync(Channel).Wait();
+            _eventListener.JoinAsync(Channel).Wait();
 
-            StreamerBotAppSettings.Load();
+            try
+            {
+                StreamerBotAppSettings.Load();
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred while loading the bot settings : {ex}");
+            }
         }
 
         ~BotEventListener() {
-            _ = EventListener.LeaveAsync(Channel);
+            try
+            {
+                _ = _eventListener.LeaveAsync(Channel);
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
-        private void SendToQueue(BotEvent botEvent)
+        private static void SendToQueue(BotEvent botEvent)
         {
             CPH.TriggerCodeEvent(botEvent.ActionId, botEvent.Arguments);
         }
@@ -79,9 +98,15 @@ namespace Kick.Bot
                 if (message.ChatroomId != Channel.Chatroom.Id)
                     return;
 
-                if (messagesHistory.Count >= 300)
-                    messagesHistory.Dequeue();
-                messagesHistory.Enqueue(message);
+                if ((from oldMsg in _messagesHistory where oldMsg.Id == message.Id select oldMsg).Any())
+                {
+                    // We already saw this message, ignore it
+                    return;
+                }
+
+                if (_messagesHistory.Count >= 300)
+                    _messagesHistory.Dequeue();
+                _messagesHistory.Enqueue(message);
 
                 CPH.LogVerbose($"[Kick] Chat :: {message.Sender.Username} : {message.Content}");
                 var isCommand = false;
@@ -95,7 +120,7 @@ namespace Kick.Bot
                     activity.Username = message.Sender.Username;
                     activity.Slug = message.Sender.Slug;
                     activity.IsOG = message.Sender.IsOG;
-                    activity.IsVip = message.Sender.IsVIP;
+                    activity.IsVip = message.Sender.IsVip;
                     activity.IsModerator = message.Sender.IsModerator;
                     activity.IsSubscriber = message.Sender.IsSubscriber;
                     if (activity.IsFollower)
@@ -132,7 +157,7 @@ namespace Kick.Bot
                 }
 
                 int role = 1;
-                if (message.Sender.IsVIP)
+                if (message.Sender.IsVip)
                     role = 2;
                 if (message.Sender.IsModerator)
                     role = 3;
@@ -146,7 +171,7 @@ namespace Kick.Bot
                     { "userType", "kick" },
                     { "isSubscribed", message.Sender.IsSubscriber },
                     { "isModerator", message.Sender.IsModerator },
-                    { "isVip", message.Sender.IsVIP },
+                    { "isVip", message.Sender.IsVip },
                     { "eventSource", "kick" },
 
                     { "msgId", message.Id },
@@ -215,7 +240,7 @@ namespace Kick.Bot
                 }
 
                 Dictionary<string, object> arguments = null;
-                var deletedMessage = (from msg in messagesHistory where msg.Id == message.Message.Id select msg).FirstOrDefault();
+                var deletedMessage = (from msg in _messagesHistory where msg.Id == message.Message.Id select msg).FirstOrDefault();
                 if(deletedMessage == null)
                 {
                     arguments = new Dictionary<string, object>() {
@@ -227,7 +252,7 @@ namespace Kick.Bot
                 else
                 {
                     int role = 1;
-                    if (deletedMessage.Sender.IsVIP)
+                    if (deletedMessage.Sender.IsVip)
                         role = 2;
                     if (deletedMessage.Sender.IsModerator)
                         role = 3;
@@ -244,7 +269,7 @@ namespace Kick.Bot
                         { "userType", "kick" },
                         { "isSubscribed", deletedMessage.Sender.IsSubscriber },
                         { "isModerator", deletedMessage.Sender.IsModerator },
-                        { "isVip", deletedMessage.Sender.IsVIP },
+                        { "isVip", deletedMessage.Sender.IsVip },
 
                         { "msgId", deletedMessage.Id },
                         { "chatroomId", deletedMessage.ChatroomId },
@@ -281,12 +306,12 @@ namespace Kick.Bot
                     activity.FollowerSince = activity.FollowerSince ?? DateTime.Now;
                 }
 
-                if (Followers.Contains(followEvent.User.Id))
+                if (_followers.Contains(followEvent.User.Id))
                 {
                     // On a déjà reçu un event de follow pour cet utilisateur !
                     return;
                 }
-                Followers.Add(followEvent.User.Id);
+                _followers.Add(followEvent.User.Id);
 
                 SendToQueue(new BotEvent()
                 {
@@ -570,6 +595,68 @@ namespace Kick.Bot
                 CPH.LogError($"[Kick] An error occurred while handling chat mode change : {ex.Message}");
             }
         }
+        
+        private void Kick_OnChatModeChanged(ChatModeChangedEvent chatModeChangedEvent)
+        {
+            try
+            {
+                if (chatModeChangedEvent.Channel.Id != Channel.Id)
+                    return;
+
+                var propertyName = "unknown";
+                var propertyValue = false;
+                switch (chatModeChangedEvent.ChatMode)
+                {
+                    case ChatMode.FollowersOnlyEnabled:
+                        propertyValue = true;
+                        goto case ChatMode.FollowersOnlyDisabled;
+                    case ChatMode.FollowersOnlyDisabled :
+                        propertyName = "followersOnly";
+                        break;
+                    case ChatMode.AllowLinksActivated:
+                        propertyValue = true;
+                        goto case ChatMode.AllowLinksDeactivated;
+                    case ChatMode.AllowLinksDeactivated:
+                        propertyName = "allowLinks";
+                        break;
+                    case ChatMode.EmotesOnlyEnabled:
+                        propertyValue = true;
+                        goto case ChatMode.EmotesOnlyDisabled;
+                    case ChatMode.EmotesOnlyDisabled:
+                        propertyName = "emotesOnly";
+                        break;
+                    case ChatMode.SlowModeEnabled:
+                        propertyValue = true;
+                        goto case ChatMode.SlowModeDisabled;
+                    case ChatMode.SlowModeDisabled:
+                        propertyName = "slowMode";
+                        break;
+                    case ChatMode.SubsOnlyEnabled:
+                        propertyValue = true;
+                        goto case ChatMode.SubsOnlyDisabled;
+                    case ChatMode.SubsOnlyDisabled:
+                        propertyName = "subsOnly";
+                        break;
+                    default: break;
+                }
+
+                SendToQueue(new BotEvent()
+                {
+                    ActionId = BotEventType.ChatModeChanged,
+                    Arguments = new Dictionary<string, object>() {
+                        { "chatMode", (int)chatModeChangedEvent.ChatMode },
+                        { "propertyName", propertyName },
+                        { "propertyValue", propertyValue },
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred while handling chat mode change : {ex.Message}");
+            }
+        }
 
         private void Kick_OnPollCancelled(PollUpdateEvent pollUpdateEvent)
         {
@@ -753,7 +840,7 @@ namespace Kick.Bot
                 if (kickEvent.Livestream.Channel.Id != Channel.Id)
                     return;
 
-                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+                Channel = _eventListener.Client.GetChannelInfos(Channel.Slug).Result;
 
                 SendToQueue(new BotEvent()
                 {
@@ -779,7 +866,7 @@ namespace Kick.Bot
                 if (livestreamEvent.Livestream.ChannelId != Channel.Id)
                     return;
 
-                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+                Channel = _eventListener.Client.GetChannelInfos(Channel.Slug).Result;
 
                 var args = new Dictionary<string, object>() {
                     { "startedAt", DateTime.Now },
@@ -836,7 +923,7 @@ namespace Kick.Bot
                     { "fromKick", true }
                 };
 
-                Channel = EventListener.Client.GetChannelInfos(Channel.Slug).Result;
+                Channel = _eventListener.Client.GetChannelInfos(Channel.Slug).Result;
 
                 SendToQueue(new BotEvent()
                 {
@@ -894,7 +981,7 @@ namespace Kick.Bot
                 }
 
                 int role = 1;
-                if (pinnedMessageEvent.Message.Sender.IsVIP)
+                if (pinnedMessageEvent.Message.Sender.IsVip)
                     role = 2;
                 if (pinnedMessageEvent.Message.Sender.IsModerator)
                     role = 3;
@@ -911,7 +998,7 @@ namespace Kick.Bot
                         { "userType", "kick" },
                         { "isSubscribed", pinnedMessageEvent.Message.Sender.IsSubscriber },
                         { "isModerator", pinnedMessageEvent.Message.Sender.IsModerator },
-                        { "isVip", pinnedMessageEvent.Message.Sender.IsVIP },
+                        { "isVip", pinnedMessageEvent.Message.Sender.IsVip },
                         
                         { "msgId", pinnedMessageEvent.Message.Id },
                         { "chatroomId", pinnedMessageEvent.Message.ChatroomId },
@@ -955,6 +1042,129 @@ namespace Kick.Bot
             }
         }
 
+        private void Kick_OnRewardRedeemed(RewardRedeemedEvent rewardRedeemedEvent)
+        {
+            try
+            {
+                var rewardData = new Dictionary<string, object>()
+                {
+                    { "user", rewardRedeemedEvent.User.Username },
+                    { "userId", rewardRedeemedEvent.User.Id },
+
+                    { "redeemId", rewardRedeemedEvent.Id },
+                    { "rewardId", rewardRedeemedEvent.Reward.Id },
+                    { "rewardTitle", rewardRedeemedEvent.Reward.Title },
+                    { "rewardUserInput", rewardRedeemedEvent.Reward.UserInput },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+                SendToQueue(new BotEvent
+                {
+                    ActionId = $"{BotEventType.RewardRedeemed}.{rewardRedeemedEvent.Reward.Id}",
+                    Arguments = rewardData
+                });
+                SendToQueue(new BotEvent
+                {
+                    ActionId = BotEventType.RewardRedeemed,
+                    Arguments = rewardData
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred when reading redeemed reward data : {ex.Message}");
+            }
+        }
+        
+        private void Kick_OnPredictionCreated(Prediction prediction)
+        {
+            try
+            {
+                var predictionData = new Dictionary<string, object>()
+                {
+                    { "predictionId", prediction.Id },
+                    { "predictionTitle", prediction.Title },
+                    { "predictionDuration", prediction.Duration },
+                    { "predictionCreatedAt", prediction.CreatedAt },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+                for (var i = 0; i < prediction.Outcomes.Length; ++i)
+                {
+                    predictionData.Add($"predictionOutcome{i}Id", prediction.Outcomes[i].Id);
+                    predictionData.Add($"predictionOutcome{i}Title", prediction.Outcomes[i].Title);
+                }
+                SendToQueue(new BotEvent
+                {
+                    ActionId = BotEventType.PredictionCreated,
+                    Arguments = predictionData
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred when reading prediction data : {ex.Message}");
+            }
+        }
+        
+        private void Kick_OnPredictionUpdated(Prediction prediction)
+        {
+            try
+            {
+                var predictionData = new Dictionary<string, object>()
+                {
+                    { "predictionId", prediction.Id },
+                    { "predictionTitle", prediction.Title },
+                    { "predictionState", prediction.State },
+                    { "predictionDuration", prediction.Duration },
+                    { "predictionCreatedAt", prediction.CreatedAt },
+                    { "predictionUpdatedAt", prediction.UpdatedAt },
+                    { "predictionLockedAt", prediction.LockedAt },
+                    { "predictionOutcomesCount", prediction.Outcomes.Length },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+                for (var i = 0; i < prediction.Outcomes.Length; ++i)
+                {
+                    predictionData.Add($"predictionOutcome{i}Id", prediction.Outcomes[i].Id);
+                    predictionData.Add($"predictionOutcome{i}Title", prediction.Outcomes[i].Title);
+                    predictionData.Add($"predictionOutcome{i}TotalVoteAmount", prediction.Outcomes[i].TotalVoteAmount);
+                    predictionData.Add($"predictionOutcome{i}VoteCount", prediction.Outcomes[i].VoteCount);
+                    predictionData.Add($"predictionOutcome{i}ReturnRate", prediction.Outcomes[i].ReturnRate);
+                }
+                if (prediction.State == Prediction.StateResolved)
+                {
+                    CPH.SetArgument($"predictionWinningOutcomeId", prediction.WinningOutcomeId);
+                    CPH.SetArgument($"predictionWinningOutcomeIndex", prediction.Outcomes.ToList().FindIndex(x => x.Id == prediction.WinningOutcomeId));
+                }
+
+                var eventName = BotEventType.PredictionUpdated;
+                switch (prediction.State)
+                {
+                    case Prediction.StateResolved:
+                        eventName = BotEventType.PredictionResolved;
+                        break;
+                    case Prediction.StateCancelled:
+                        eventName = BotEventType.PredictionCancelled;
+                        break;
+                    case Prediction.StateLocked:
+                        eventName = BotEventType.PredictionLocked;
+                        break;
+                }
+                
+                SendToQueue(new BotEvent
+                {
+                    ActionId = eventName,
+                    Arguments = predictionData
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick] An error occurred when reading prediction data : {ex.Message}");
+            }
+        }
+
         private void UpdateActivityDB(EventUser user)
         {
             using (var activity = UserActivity.ForUser(user.Id))
@@ -973,24 +1183,31 @@ namespace Kick.Bot
             public const string Message = "kickChatMessage";
             public const string ChatCommand = "kickChatCommand";
             public const string ChatCommandCooldown = "kickChatCommandCooldown";
+            public const string ChatUpdated = "kickChatUpdated";
+            public const string ChatModeChanged = "kickChatModeChanged";
             public const string MessageDeleted = "kickChatMessageDeleted";
+            public const string MessagePinned = "kickMessagePinned";
+            public const string MessageUnpinned = "kickMessageUnpinned";
+            public const string PollCancelled = "kickPollCancelled";
+            public const string PollCompleted = "kickPollCompleted";
+            public const string PollCreated = "kickPollCreated";
+            public const string PollUpdated = "kickPollUpdated";
+            public const string Raid = "kickIncomingRaid";
+            public const string RewardRedeemed = "kickRewardRedeemed";
+            public const string StreamEnded = "kickStreamEnded";
+            public const string StreamStarted = "kickStreamStarted";
             public const string Subscription = "kickSub";
             public const string SubGift = "kickGift";
             public const string SubGifts = "kickGifts";
             public const string Timeout = "kickTO";
+            public const string TitleChanged = "kickTitleChanged";
             public const string UserBanned = "kickBan";
             public const string UserUnbanned = "kickUnban";
-            public const string PollCreated = "kickPollCreated";
-            public const string PollUpdated = "kickPollUpdated";
-            public const string PollCompleted = "kickPollCompleted";
-            public const string PollCancelled = "kickPollCancelled";
-            public const string ChatUpdated = "kickChatUpdated";
-            public const string StreamStarted = "kickStreamStarted";
-            public const string StreamEnded = "kickStreamEnded";
-            public const string Raid = "kickIncomingRaid";
-            public const string TitleChanged = "kickTitleChanged";
-            public const string MessagePinned = "kickMessagePinned";
-            public const string MessageUnpinned = "kickMessageUnpinned";
+            public const string PredictionCreated = "kickPredictionCreated";
+            public const string PredictionUpdated = "kickPredictionUpdated";
+            public const string PredictionLocked = "kickPredictionLocked";
+            public const string PredictionResolved = "kickPredictionResolved";
+            public const string PredictionCancelled = "kickPredictionCancelled";
         }
 
         internal class BotEvent

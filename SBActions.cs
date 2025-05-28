@@ -2,440 +2,246 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Kick;
 using Kick.Bot;
-using Kick.Models.API;
 
 public class CPHInline
 {
-	// Name of the channel to connect to
-	// Leave "null" to automatically connect to authenticated user's channel
-	public static readonly string CHANNEL = null;
-	
-	// How to set this variable :
-	// public static readonly string CHANNEL = "MyChannelName";
-	
 	/*
 		!! REFERENCES TO ADD !!
 		I have no way to add relative paths for references, so you have to add them.
 			
-			Kick.dll
-			Kick.bot.dll
+			* Kick.bot.dll
 	*/
 	
 	/// DON'T CHANGE ANYTHING BELOW ///
 	
 	private BotClient Client = null;
-	private BotEventListener Listener = null;
 	
     public void Init()
     {
     	BotClient.CPH = CPH;
-    	Authenticate();
+    	Client = new BotClient();
     }
-    
-    public void Authenticate() {
-    	Task.Run(async delegate {
-    		try {
-				if(Client == null)
-					Client = new BotClient();
-				if(Client.AuthenticatedUser == null)
-					await Client.Authenticate();
-				if(Listener == null)
-				{
-					if(CHANNEL == null)
-						Listener = await Client.StartListeningToSelf();
-					else
-						Listener = await Client.StartListeningTo(CHANNEL);
-				}
-			} catch(Exception e) {
-				CPH.LogDebug($"Exception : {e}");
-			}
-    	});
-	}
 
     public bool Execute()
     {
-    	Authenticate();
+    	BotClient.OpenConfig();
     	return true;
     }
     
-    public bool SendMessage() {
-    	try
-    	{
-    		
-			Client.SendMessage(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool SendReply() {
-    	try
-    	{
-    		
-			Client.SendReply(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool GetUserInfos() {
-    	try
-    	{
-			Client.GetUserInfos(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool GetBroadcasterInfos() {
-    	try
-    	{
-			Client.GetBroadcasterInfos(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool AddVip() {
-    	try
-    	{
-			Client.AddChannelVip(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool RemoveVip() {
-    	try
-    	{
-			Client.RemoveChannelVip(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool AddOG() {
-    	try
-    	{
-			Client.AddChannelOG(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool RemoveOG() {
-    	try
-    	{
-			Client.RemoveChannelOG(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+    public bool AcceptRedemption()
+    {
+	    return Client.AcceptRedemption(args);
     }
     
     public bool AddModerator() {
-    	try
-    	{
-			Client.AddChannelModerator(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+	    return Client.AddChannelModerator(args);
     }
     
-    public bool RemoveModerator() {
-    	try
-    	{
-			Client.RemoveChannelModerator(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+    public bool AddOG() {
+	    return Client.AddChannelOG(args);
+    }
+    
+    public bool AddVip() {
+	    return Client.AddChannelVip(args);
     }
     
     public bool BanUser() {
-    	try
-    	{
-			Client.BanUser(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+	    return Client.BanUser(args);
     }
     
-    public bool TimeoutUser() {
-    	try
-    	{
-			Client.TimeoutUser(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool UnbanUser() {
-    	try
-    	{
-			Client.UnbanUser(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool StartPoll() {
-    	try
-    	{
-			Client.StartPoll(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool ChangeTitle() {
-    	try
-    	{
-			Client.ChangeTitle(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool ChangeCategory() {
-    	try
-    	{
-			Client.ChangeCategory(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool ClearChat() {
-    	try
-    	{
-			Client.ClearChat(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool MakeClip() {
-    	try
-    	{
-			Client.MakeClip(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-
-    public bool GetClips()
+    public bool CancelPrediction()
     {
-        try
-        {
-            Client.GetClips(args, Listener.Channel);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
-
-    public bool GetClipMP4URL()
-    {
-        try
-        {
-            Client.GetClipMP4URL(args, Listener.Channel);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
-
-    public bool ChatEmotesOnly() {
-    	try
-    	{
-			Client.ChatEmotesOnly(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+	    return Client.CancelPrediction(args);
     }
     
-    public bool ChatSubsOnly() {
-    	try
-    	{
-			Client.ChatSubsOnly(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+    public bool ChangeStreamInfo() {
+	    return Client.ChangeStreamInfo(args);
+    }
+    
+    public bool ChatAccountAge() {
+	    return Client.ChatBotProtection(args);
     }
     
     public bool ChatBotProtection() {
-    	try
-    	{
-			Client.ChatBotProtection(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+	    return Client.ChatBotProtection(args);
+    }
+    
+    public bool ChatEmotesOnly() {
+	    return Client.ChatEmotesOnly(args);
     }
     
     public bool ChatFollowersOnly() {
-    	try
-    	{
-			Client.ChatFollowersOnly(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+	    return Client.ChatFollowersOnly(args);
     }
     
     public bool ChatSlowMode() {
-    	try
-    	{
-			Client.ChatSlowMode(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+	    return Client.ChatSlowMode(args);
     }
     
-    public bool PinMessage() {
-    	try
-    	{
-			Client.PinMessage(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool UnpinMessage() {
-    	try
-    	{
-			Client.UnpinMessage(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
-    }
-    
-    public bool GetPinnedMessage() {
-    	try
-    	{
-			Client.GetPinnedMessage(args, Listener.Channel);
-			return true;
-    	}
-    	catch(Exception e)
-    	{
-    		return false;
-    	}
+    public bool ChatSubsOnly() {
+	    return Client.ChatSubsOnly(args);
     }
 
-    public bool GetFollowAgeInfo()
+    public bool ClearChat() {
+	    return Client.ClearChat(args);
+    }
+    
+    public bool CreatePrediction()
     {
-        try
-        {
-            Client.GetUserStats(args, Listener.Channel);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
+	    return Client.CreatePrediction(args);
+    }
+    
+    public bool CreateReward()
+    {
+	    return Client.CreateReward(args);
     }
 
-    public bool PickRandomActiveUser()
+    public bool DeleteMessage() {
+	    return Client.DeleteMessage(args);
+    }
+    
+    public bool DeleteReward()
     {
-        try
-        {
-            Client.PickRandomActiveUser(args, Listener.Channel);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
+	    return Client.DeleteReward(args);
+    }
+    
+    public bool DisableMultistream() {
+	    return Client.DisableMultistream(args);
+    }
+    
+    public bool EnableMultistream() {
+	    return Client.EnableMultistream(args);
+    }
+    
+    public bool GetBroadcasterInfos() {
+	    return Client.GetBroadcasterInfos(args);
     }
 
     public bool GetChannelCounters()
     {
-        try
-        {
-            Client.GetChannelCounters(args, Listener.Channel);
-            return true;
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
+	    return Client.GetChannelCounters(args);
+    }
+    
+    public bool GetClips()
+    {
+	    return Client.GetClips(args);
+    }
+    
+    public bool GetClipVideoUrl()
+    {
+	    return Client.GetClipVideoUrl(args);
+    }
+    
+    public bool GetFollowAgeInfo()
+    {
+	    return Client.GetUserStats(args);
+    }
+    
+    public bool GetLatestPrediction()
+    {
+	    return Client.GetLatestPrediction(args);
+    }
+    
+    public bool GetPinnedMessage() {
+	    return Client.GetPinnedMessage(args);
+    }
+    
+    public bool GetRecentPredictions()
+    {
+	    return Client.GetRecentPredictions(args);
+    }
+    
+    public bool GetRedemptionsList()
+    {
+	    return Client.GetRedemptionsList(args);
+    }
+    
+    public bool GetReward()
+    {
+	    return Client.GetReward(args);
+    }
+    
+    public bool GetRewardsList()
+    {
+	    return Client.GetRewardsList(args);
+    }
+    
+    public bool GetUserInfos() {
+	    return Client.GetUserInfos(args);
+    }
+    
+    public bool LockPrediction()
+    {
+	    return Client.LockPrediction(args);
+    }
+    
+    public bool MakeClip() {
+	    return Client.MakeClip(args);
+    }
+    
+    public bool PickRandomActiveUser()
+    {
+	    return Client.PickRandomActiveUser(args);
+    }
+
+    public bool PinMessage() {
+	    return Client.PinMessage(args);
+    }
+
+    public bool RejectRedemption()
+    {
+	    return Client.RejectRedemption(args);
+    }
+    
+    public bool ReloadRewards()
+    {
+	    return Client.ReloadRewards();
+    }
+    
+    public bool RemoveModerator() {
+	    return Client.RemoveChannelModerator(args);
+    }
+    
+    public bool RemoveOG() {
+	    return Client.RemoveChannelOG(args);
+    }
+    
+    public bool RemoveVip() {
+	    return Client.RemoveChannelVip(args);
+    }
+    
+    public bool ResolvePrediction()
+    {
+	    return Client.ResolvePrediction(args);
+    }
+
+    public bool SendMessage() {
+    	return Client.SendMessage(args);
+    }
+
+    public bool SendReply() {
+    	return Client.SendReply(args);
+    }
+    
+    public bool StartPoll() {
+	    return Client.StartPoll(args);
+    }
+    
+    public bool TimeoutUser() {
+	    return Client.TimeoutUser(args);
+    }
+    
+    public bool UnbanUser() {
+	    return Client.UnbanUser(args);
+    }
+
+    public bool UnpinMessage() {
+	    return Client.UnpinMessage(args);
+    }
+    
+    public bool UpdateReward()
+    {
+	    return Client.UpdateReward(args);
     }
 }

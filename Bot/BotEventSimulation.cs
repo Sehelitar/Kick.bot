@@ -23,7 +23,7 @@ using System.Threading.Tasks;
 
 namespace Kick.Bot
 {
-    public sealed partial class BotEventListener
+    /*public sealed partial class BotEventListener
     {
         public void SimulateEvent(Dictionary<string, dynamic> args)
         {
@@ -40,5 +40,5 @@ namespace Kick.Bot
                 CPH.LogDebug($"[Kick] Une erreur s'est produite lors de la demande de simulation : {ex}");
             }
         }
-    }
+    }*/
 }
