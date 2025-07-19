@@ -21,13 +21,16 @@ using Kick.API.Models;
 using Streamer.bot.Plugin.Interface;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Net;
 using System.Threading.Tasks;
-using Microsoft.Toolkit.Uwp.Notifications;
 using System.Linq;
 using LiteDB;
 using System.Text.RegularExpressions;
 using System.Text;
+using Kick.Properties;
 using Newtonsoft.Json;
 
 namespace Kick.Bot
@@ -113,7 +116,7 @@ namespace Kick.Bot
 
         public static bool OpenConfig()
         {
-            Task.Run(() => GlobalPluginUi.OpenConfig());
+            GlobalPluginUi.OpenConfig();
             return true;
         }
 
@@ -137,15 +140,49 @@ namespace Kick.Bot
             {
                 AuthenticatedUser = await Client.GetCurrentUserInfos();
                 CPH.LogDebug($"[Kick] Connected as {AuthenticatedUser.Username}");
-                new ToastContentBuilder()
-                    .AddText("Kick.bot")
-                    .AddText($"Successfuly connected as {AuthenticatedUser.Username}")
-                    .SetToastDuration(ToastDuration.Short)
-                    .Show();
+                CPH.SetGlobalVar("KickNotFirstLaunch", true);
+
+                var logoPath = Path.Combine(Path.GetTempPath(), "kick_pp.png");
+                try
+                {
+                    Bitmap logo;
+                    var decoder = new Imazen.WebP.SimpleDecoder();
+                    using (var stream = WebRequest
+                               .CreateHttp(AuthenticatedUser.ProfilePicAlt)
+                               .GetResponse().GetResponseStream())
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        if (stream != null)
+                        {
+                            await stream.CopyToAsync(memoryStream);
+                            var pictureBuffer = memoryStream.ToArray();
+                            logo = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                        }
+                        else
+                        {
+                            logo = Resources.KickLogo;
+                        }
+                    }
+                    logo.Save(logoPath, ImageFormat.Png);
+                }
+                catch (Exception ex)
+                {
+                    CPH.LogDebug($"[Kick] An error occured when trying to fetch user's profile image :");
+                    CPH.LogError($"{ex}");
+                }
+                
+                CPH.ShowToastNotification(
+                    "kick.bot.config",
+                    "Kick.bot", 
+                    $"Connected as {AuthenticatedUser.Username}",
+                    "Click to open Kick.bot config window",
+                    logoPath
+                );
 
                 try
                 {
                     BroadcasterListener = await StartListeningToSelf();
+                    GlobalPluginUi.RefreshEventListenerStatus();
                     CPH.LogDebug($"[Kick] Listener active.");
                 }
                 catch (Exception ex)
@@ -162,8 +199,45 @@ namespace Kick.Bot
         {
             Task.Run(async () =>
             {
-                AuthenticatedBot = await Client.GetCurrentUserInfos();
+                AuthenticatedBot = await AltClient.GetCurrentUserInfos();
                 CPH.LogDebug($"[Kick] Bot connected as {AuthenticatedBot.Username}");
+                
+                var logoPath = Path.Combine(Path.GetTempPath(), "kick_b_pp.png");
+                try
+                {
+                    Bitmap logo;
+                    var decoder = new Imazen.WebP.SimpleDecoder();
+                    using (var stream = WebRequest
+                               .CreateHttp(AuthenticatedBot.ProfilePicAlt)
+                               .GetResponse().GetResponseStream())
+                    using (var memoryStream = new MemoryStream())
+                    {
+                        if (stream != null)
+                        {
+                            await stream.CopyToAsync(memoryStream);
+                            var pictureBuffer = memoryStream.ToArray();
+                            logo = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                        }
+                        else
+                        {
+                            logo = Resources.KickLogo;
+                        }
+                    }
+                    logo.Save(logoPath, ImageFormat.Png);
+                }
+                catch (Exception ex)
+                {
+                    CPH.LogDebug($"[Kick] An error occured when trying to fetch user's profile image :");
+                    CPH.LogError($"{ex}");
+                }
+                
+                CPH.ShowToastNotification(
+                    "kick.bot.config",
+                    "Kick.bot",
+                    $"Bot also connected as {AuthenticatedBot.Username}",
+                    "Click to open Kick.bot config window",
+                    logoPath
+                );
             });
         }
 
@@ -1561,14 +1635,13 @@ namespace Kick.Bot
                 Task<Reward[]> result = Client.GetRewardsList(channel, enabledOnly);
                 result.Wait();
                 var success = result.Status == TaskStatus.RanToCompletion;
-                if (success)
+                if (!success) return false;
+                
+                for (var i = 0; i < result.Result.Length; ++i)
                 {
-                    for (var i = 0; i < result.Result.Length; ++i)
-                    {
-                        CPH.SetArgument($"reward{i}", result.Result[i].Id);
-                    }
+                    CPH.SetArgument($"reward{i}", result.Result[i].Id);
                 }
-                return success;
+                return true;
             }
             catch (Exception ex)
             {
@@ -1589,23 +1662,22 @@ namespace Kick.Bot
                 if (!args.TryGetValue("rewardId", out var hold))
                     throw new Exception("missing argument, rewardId required");
                 
-                Task<Reward> result = Client.GetReward(channel, Convert.ToInt64(hold));
+                Task<Reward> result = Client.GetReward(channel, hold);
                 result.Wait();
                 var success = result.Status == TaskStatus.RanToCompletion;
-                if (success)
-                {
-                    var reward = result.Result;
-                    CPH.SetArgument("rewardTitle", reward.Title);
-                    CPH.SetArgument("rewardDescription", reward.Description);
-                    CPH.SetArgument("rewardBackgroundColor", reward.BackgroundColor);
-                    CPH.SetArgument("rewardRedemptionSkipQueue", reward.ShouldRedemptionsSkipRequestQueue);
-                    CPH.SetArgument("rewardCost", reward.Cost);
-                    CPH.SetArgument("rewardPrompt", reward.Prompt);
-                    CPH.SetArgument("rewardUserInputRequired", reward.IsUserInputRequired);
-                    CPH.SetArgument("rewardPaused", reward.IsPaused);
-                    CPH.SetArgument("rewardEnabled", reward.IsEnabled);
-                }
-                return success;
+                if (!success) return false;
+                
+                var reward = result.Result;
+                CPH.SetArgument("rewardTitle", reward.Title);
+                CPH.SetArgument("rewardDescription", reward.Description);
+                CPH.SetArgument("rewardBackgroundColor", reward.BackgroundColor);
+                CPH.SetArgument("rewardRedemptionSkipQueue", reward.ShouldRedemptionsSkipRequestQueue);
+                CPH.SetArgument("rewardCost", reward.Cost);
+                CPH.SetArgument("rewardPrompt", reward.Prompt);
+                CPH.SetArgument("rewardUserInputRequired", reward.IsUserInputRequired);
+                CPH.SetArgument("rewardPaused", reward.IsPaused);
+                CPH.SetArgument("rewardEnabled", reward.IsEnabled);
+                return true;
             }
             catch (Exception ex)
             {
@@ -1624,9 +1696,8 @@ namespace Kick.Bot
                     channel = BroadcasterListener.Channel;
 
                 var reward = new Reward();
-                dynamic hold;
-                
-                if (!args.TryGetValue("rewardTitle", out hold))
+
+                if (!args.TryGetValue("rewardTitle", out var hold))
                     throw new Exception("missing argument, rewardTitle required");
                 reward.Title = hold.ToString();
                 
@@ -1642,20 +1713,9 @@ namespace Kick.Bot
                     throw new Exception("missing argument, rewardCost required");
                 reward.Cost = Convert.ToInt64(hold);
                 
-                if (args.TryGetValue("rewardEnabled", out hold))
-                    reward.IsEnabled = Convert.ToBoolean(hold);
-                else
-                    reward.IsEnabled = true;
-                
-                if (args.TryGetValue("rewardPaused", out hold))
-                    reward.IsPaused = Convert.ToBoolean(hold);
-                else
-                    reward.IsPaused = false;
-                
-                if (args.TryGetValue("rewardUserInputRequired", out hold))
-                    reward.IsUserInputRequired = Convert.ToBoolean(hold);
-                else
-                    reward.IsUserInputRequired = false;
+                reward.IsEnabled = !args.TryGetValue("rewardEnabled", out hold) || (bool)Convert.ToBoolean(hold);
+                reward.IsPaused = args.TryGetValue("rewardPaused", out hold) && (bool)Convert.ToBoolean(hold);
+                reward.IsUserInputRequired = args.TryGetValue("rewardUserInputRequired", out hold) && (bool)Convert.ToBoolean(hold);
 
                 if (reward.IsUserInputRequired)
                 {
@@ -1668,20 +1728,16 @@ namespace Kick.Bot
                     reward.Prompt = "";
                 }
 
-                if (args.TryGetValue("rewardRedemptionSkipQueue", out hold))
-                    reward.ShouldRedemptionsSkipRequestQueue = Convert.ToBoolean(hold);
-                else
-                    reward.ShouldRedemptionsSkipRequestQueue = false;
+                reward.ShouldRedemptionsSkipRequestQueue = args.TryGetValue("rewardRedemptionSkipQueue", out hold) && (bool)Convert.ToBoolean(hold);
 
                 var result = Client.CreateReward(channel, reward);
                 result.Wait();
                 var success = result.Status == TaskStatus.RanToCompletion;
-                if (success)
-                {
-                    CPH.SetArgument("rewardId", result.Result.Id);
-                    Task.Run(() => ReloadRewards());
-                }
-                return success;
+                if (!success) return false;
+                
+                CPH.SetArgument("rewardId", result.Result.Id);
+                Task.Run(() => ReloadRewards());
+                return true;
             }
             catch (Exception ex)
             {
@@ -1699,12 +1755,10 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                dynamic hold;
-                
-                if (!args.TryGetValue("rewardId", out hold))
+                if (!args.TryGetValue("rewardId", out var hold))
                     throw new Exception("missing argument, rewardTitle required");
                 
-                var reward = Client.GetReward(channel, Convert.ToInt64(hold)).Result;
+                var reward = Client.GetReward(channel, hold).Result;
                 
                 if (args.TryGetValue("rewardTitle", out hold))
                     reward.Title = hold.ToString();
@@ -1759,7 +1813,7 @@ namespace Kick.Bot
                 if (!args.TryGetValue("rewardId", out var hold))
                     throw new Exception("missing argument, rewardId required");
                 
-                var result = Client.DeleteReward(channel, Convert.ToInt64(hold));
+                var result = Client.DeleteReward(channel, hold);
                 result.Wait();
                 return result.Status == TaskStatus.RanToCompletion;
             }

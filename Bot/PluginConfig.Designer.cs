@@ -113,7 +113,7 @@ namespace Kick.Bot
             this.broadcasterStatus.Name = "broadcasterStatus";
             this.broadcasterStatus.Size = new System.Drawing.Size(258, 31);
             this.broadcasterStatus.TabIndex = 2;
-            this.broadcasterStatus.Text = "Affiliate";
+            this.broadcasterStatus.Text = "-";
             // 
             // broadcasterName
             // 
@@ -122,7 +122,7 @@ namespace Kick.Bot
             this.broadcasterName.Name = "broadcasterName";
             this.broadcasterName.Size = new System.Drawing.Size(258, 30);
             this.broadcasterName.TabIndex = 1;
-            this.broadcasterName.Text = "BroadcasterName";
+            this.broadcasterName.Text = "<Disconnected>";
             // 
             // broadcasterPicture
             // 
@@ -166,7 +166,7 @@ namespace Kick.Bot
             this.botStatus.Name = "botStatus";
             this.botStatus.Size = new System.Drawing.Size(258, 31);
             this.botStatus.TabIndex = 4;
-            this.botStatus.Text = "User";
+            this.botStatus.Text = "-";
             // 
             // botName
             // 
@@ -175,7 +175,7 @@ namespace Kick.Bot
             this.botName.Name = "botName";
             this.botName.Size = new System.Drawing.Size(258, 30);
             this.botName.TabIndex = 3;
-            this.botName.Text = "BotName";
+            this.botName.Text = "<Disconnected>";
             // 
             // botPicture
             // 
@@ -210,7 +210,7 @@ namespace Kick.Bot
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.MaximizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(829, 380);
+            this.MinimumSize = new System.Drawing.Size(807, 324);
             this.Name = "PluginConfig";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.Text = "Kick.bot Configuration";

@@ -124,7 +124,7 @@ namespace Kick.API.Internal
         public void BeginAuthentication()
         {
             BotClient.CPH.LogInfo($"[Kick] Attempting to authenticate with Kick... IsAlreadyAuth={IsAuthenticated}");
-            if (IsAuthenticated) return;
+            if (IsAuthenticated || Visible) return;
 
             // Automatically open login form
             ExecuteScriptAsync(@"(function() {
@@ -237,9 +237,9 @@ return true;
         public void ExecuteScriptAsync(string script)
         {
             if (WebController.InvokeRequired)
-                WebController.Invoke((Action)(() => ExecuteScriptAsync(script)));
+                WebController?.Invoke((Action)(() => ExecuteScriptAsync(script)));
             else
-                WebController.CoreWebView2.ExecuteScriptAsync(script);
+                WebController?.CoreWebView2?.ExecuteScriptAsync(script);
         }
 
         public string ExecuteFetch(string target, string jsPayload = null)

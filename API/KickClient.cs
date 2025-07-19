@@ -584,10 +584,11 @@ namespace Kick.API
                 { "is_enabled", reward.IsEnabled },
                 { "is_paused", reward.IsPaused },
                 { "is_user_input_required", reward.IsUserInputRequired },
-                { "prompt", reward.Prompt },
                 { "should_redemptions_skip_request_queue", reward.ShouldRedemptionsSkipRequestQueue },
                 { "title", reward.Title },
             };
+            if(reward.IsUserInputRequired)
+                data.Add("prompt", reward.Prompt);
             var response = await ApiJsonPost<KickApiMessageOperationResponse<Reward>>($"/api/v2/channels/{channel.Slug}/rewards", data);
             if (response.Message != "Created")
             {
@@ -601,7 +602,20 @@ namespace Kick.API
             if (!IsAuthenticated)
                 throw new UnauthenticatedException();
             
-            var response = await ApiJsonPatch<KickApiMessageOperationResponse<Reward>>($"/api/v2/channels/{channel.Slug}/rewards/{reward.Id}", reward);
+            var data = new Dictionary<string, dynamic>()
+            {
+                { "background_color", reward.BackgroundColor },
+                { "cost", reward.Cost },
+                { "description", reward.Description },
+                { "is_enabled", reward.IsEnabled },
+                { "is_paused", reward.IsPaused },
+                { "is_user_input_required", reward.IsUserInputRequired },
+                { "should_redemptions_skip_request_queue", reward.ShouldRedemptionsSkipRequestQueue },
+                { "title", reward.Title },
+            };
+            if(reward.IsUserInputRequired)
+                data.Add("prompt", reward.Prompt);
+            var response = await ApiJsonPatch<KickApiMessageOperationResponse<Reward>>($"/api/v2/channels/{channel.Slug}/rewards/{reward.Id}", data);
             if (response.Message != "OK")
             {
                 throw new Exception(response.Message);
