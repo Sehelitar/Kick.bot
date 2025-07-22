@@ -149,7 +149,7 @@ namespace Kick.Bot
         [JsonProperty("name")]
         public string Name { get; set; }
         [JsonProperty("sources")]
-        public List<long> Sources { get; set; }
+        public long Sources { get; set; }
         [JsonProperty("permittedUsers")]
         public List<string> PermittedUsers { get; set; }
         [JsonProperty("permittedGroups")]

@@ -60,8 +60,20 @@ namespace Kick.Bot
                     CPH.LogVerbose($"[Kick] Command added : {botCommand.Command} (Id={botCommand.Id})");
                 }
 
-                CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommand.{botCommand.Id}", new string[] { "Kick", "Commands" });
-                CPH.RegisterCustomTrigger($"[Kick] {botCommand.Name} [Cooldown] ({botCommand.Command.Replace("\r\n", ", ")})", $"kickChatCommandCooldown.{botCommand.Id}", new string[] { "Kick", "Commands Cooldown" });
+                try
+                {
+                    CPH.RegisterCustomTrigger(
+                        $"[Kick] {botCommand.Name} ({botCommand.Command.Replace("\r\n", ", ")})",
+                        $"kickChatCommand.{botCommand.Id}", new string[] { "Kick", "Commands" });
+                    CPH.RegisterCustomTrigger(
+                        $"[Kick] {botCommand.Name} [Cooldown] ({botCommand.Command.Replace("\r\n", ", ")})",
+                        $"kickChatCommandCooldown.{botCommand.Id}",
+                        new string[] { "Kick", "Commands Cooldown" });
+                }
+                catch (Exception f)
+                {
+                    CPH.LogError(f.ToString());
+                }
             }
 
             _commands = newCommands;
