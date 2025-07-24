@@ -21,9 +21,9 @@ public class CPHInline
 	
     public void Init()
     {
+	    BotClient.CPH = CPH;
 	    if (!BotClient.CheckCompatibility())
 		    return;
-    	BotClient.CPH = CPH;
     	Client = new BotClient();
     }
 
