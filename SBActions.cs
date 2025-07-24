@@ -4,244 +4,396 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kick.Bot;
 
+/// ========================================================== ///
+///                       KICK.BOT 1.0                         ///
+///                                                            ///
+///   Created by | Sehelitar                                   ///
+/// Project page | https://github.com/Sehelitar/Kick.bot       ///
+///         Wiki | https://github.com/Sehelitar/Kick.bot/wiki  ///
+///                                                            ///
+///       YOU DON'T HAVE TO CHANGE ANYTHING IN THIS FILE       ///
+///           PLEASE READ THE WIKI  IF YOU NEED HELP           ///
+/// ========================================================== ///
+
 public class CPHInline
 {
-	/*
-		!! REFERENCES TO ADD !!
-		I have no way to add relative paths for references, so you have to add them.
-			
-			* Kick.bot.dll
-	*/
-	
-	/// DON'T CHANGE ANYTHING BELOW ///
-	
 	private BotClient Client = null;
 	
     public void Init()
     {
+	    if (!BotClient.CheckCompatibility())
+		    return;
     	BotClient.CPH = CPH;
     	Client = new BotClient();
     }
 
     public bool Execute()
     {
-    	BotClient.OpenConfig();
+    	if(Client != null)
+            BotClient.OpenConfig();
     	return true;
     }
     
     public bool AcceptRedemption()
     {
-	    return Client.AcceptRedemption(args);
+	    var result = Client?.AcceptRedemption(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool AddModerator() {
-	    return Client.AddChannelModerator(args);
+	    var result = Client?.AddChannelModerator(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool AddOG() {
-	    return Client.AddChannelOG(args);
+	    var result = Client?.AddChannelOG(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool AddVip() {
-	    return Client.AddChannelVip(args);
+	    var result = Client?.AddChannelVip(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool BanUser() {
-	    return Client.BanUser(args);
+	    var result = Client?.BanUser(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool CancelPrediction()
     {
-	    return Client.CancelPrediction(args);
+	    var result = Client?.CancelPrediction(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ChangeStreamInfo() {
-	    return Client.ChangeStreamInfo(args);
+	    var result = Client?.ChangeStreamInfo(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ChatAccountAge() {
-	    return Client.ChatBotProtection(args);
+	    var result = Client?.ChatBotProtection(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ChatBotProtection() {
-	    return Client.ChatBotProtection(args);
+	    var result = Client?.ChatBotProtection(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ChatEmotesOnly() {
-	    return Client.ChatEmotesOnly(args);
+	    var result = Client?.ChatEmotesOnly(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ChatFollowersOnly() {
-	    return Client.ChatFollowersOnly(args);
+	    var result = Client?.ChatFollowersOnly(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ChatSlowMode() {
-	    return Client.ChatSlowMode(args);
+	    var result = Client?.ChatSlowMode(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ChatSubsOnly() {
-	    return Client.ChatSubsOnly(args);
+	    var result = Client?.ChatSubsOnly(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 
     public bool ClearChat() {
-	    return Client.ClearChat(args);
+	    var result = Client?.ClearChat(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool CreatePrediction()
     {
-	    return Client.CreatePrediction(args);
+	    var result = Client?.CreatePrediction(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool CreateReward()
     {
-	    return Client.CreateReward(args);
+	    var result = Client?.CreateReward(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 
     public bool DeleteMessage() {
-	    return Client.DeleteMessage(args);
+	    var result = Client?.DeleteMessage(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool DeleteReward()
     {
-	    return Client.DeleteReward(args);
+	    var result = Client?.DeleteReward(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool DisableMultistream() {
-	    return Client.DisableMultistream(args);
+	    var result = Client?.DisableMultistream(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool EnableMultistream() {
-	    return Client.EnableMultistream(args);
+	    var result = Client?.EnableMultistream(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetBroadcasterInfos() {
-	    return Client.GetBroadcasterInfos(args);
+	    var result = Client?.GetBroadcasterInfos(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 
     public bool GetChannelCounters()
     {
-	    return Client.GetChannelCounters(args);
+	    var result = Client?.GetChannelCounters(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetClips()
     {
-	    return Client.GetClips(args);
+	    var result = Client?.GetClips(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetClipVideoUrl()
     {
-	    return Client.GetClipVideoUrl(args);
+	    var result = Client?.GetClipVideoUrl(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetFollowAgeInfo()
     {
-	    return Client.GetUserStats(args);
+	    var result = Client?.GetUserStats(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetLatestPrediction()
     {
-	    return Client.GetLatestPrediction(args);
+	    var result = Client?.GetLatestPrediction(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetPinnedMessage() {
-	    return Client.GetPinnedMessage(args);
+	    var result = Client?.GetPinnedMessage(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetRecentPredictions()
     {
-	    return Client.GetRecentPredictions(args);
+	    var result = Client?.GetRecentPredictions(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetRedemptionsList()
     {
-	    return Client.GetRedemptionsList(args);
+	    var result = Client?.GetRedemptionsList(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetReward()
     {
-	    return Client.GetReward(args);
+	    var result = Client?.GetReward(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetRewardsList()
     {
-	    return Client.GetRewardsList(args);
+	    var result = Client?.GetRewardsList(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool GetUserInfos() {
-	    return Client.GetUserInfos(args);
+	    var result = Client?.GetUserInfos(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool LockPrediction()
     {
-	    return Client.LockPrediction(args);
+	    var result = Client?.LockPrediction(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool MakeClip() {
-	    return Client.MakeClip(args);
+	    var result = Client?.MakeClip(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool PickRandomActiveUser()
     {
-	    return Client.PickRandomActiveUser(args);
+	    var result = Client?.PickRandomActiveUser(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 
     public bool PinMessage() {
-	    return Client.PinMessage(args);
+	    var result = Client?.PinMessage(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 
     public bool RejectRedemption()
     {
-	    return Client.RejectRedemption(args);
+	    var result = Client?.RejectRedemption(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ReloadRewards()
     {
-	    return Client.ReloadRewards();
+	    var result = Client?.ReloadRewards();
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool RemoveModerator() {
-	    return Client.RemoveChannelModerator(args);
+	    var result = Client?.RemoveChannelModerator(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool RemoveOG() {
-	    return Client.RemoveChannelOG(args);
+	    var result = Client?.RemoveChannelOG(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool RemoveVip() {
-	    return Client.RemoveChannelVip(args);
+	    var result = Client?.RemoveChannelVip(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool ResolvePrediction()
     {
-	    return Client.ResolvePrediction(args);
+	    var result = Client?.ResolvePrediction(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 
     public bool SendMessage() {
-    	return Client.SendMessage(args);
+    	var result = Client?.SendMessage(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 
     public bool SendReply() {
-    	return Client.SendReply(args);
+    	var result = Client?.SendReply(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool StartPoll() {
-	    return Client.StartPoll(args);
+	    var result = Client?.StartPoll(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool TimeoutUser() {
-	    return Client.TimeoutUser(args);
+	    var result = Client?.TimeoutUser(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool UnbanUser() {
-	    return Client.UnbanUser(args);
+	    var result = Client?.UnbanUser(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 
     public bool UnpinMessage() {
-	    return Client.UnpinMessage(args);
+	    var result = Client?.UnpinMessage(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
     
     public bool UpdateReward()
     {
-	    return Client.UpdateReward(args);
+	    var result = Client?.UpdateReward(args);
+	    if(!result.HasValue)
+		    return false;
+	    return result.Value;
     }
 }

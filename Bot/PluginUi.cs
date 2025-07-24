@@ -64,7 +64,7 @@ namespace Kick.Bot
 
         private void InitUi()
         {
-            BotClient.CPH.LogDebug("[Kick] Initializing web clients...");
+            BotClient.CPH.LogDebug("[Kick.bot] Initializing web clients...");
             var browserClient = new KickBrowser();
             var browserBot = new KickBrowser("BotAcc");
             BroadcasterKClient = new KickClient(browserClient);
@@ -76,7 +76,7 @@ namespace Kick.Bot
             ConfigWindow = new PluginConfig();
             ConfigWindow.OnLoginRequested += async (isBot) =>
             {
-                BotClient.CPH.LogDebug("[Kick] Starting authentication for " + (isBot ? "bot" : "broadcaster") + " account...");
+                BotClient.CPH.LogDebug("[Kick.bot] Starting authentication for " + (isBot ? "bot" : "broadcaster") + " account...");
                 if (isBot)
                 {
                     if (BotKClient.IsAuthenticated)
@@ -127,11 +127,11 @@ namespace Kick.Bot
 
         public void OpenConfig()
         {
-            BotClient.CPH.LogDebug("[Kick] Trying to refresh UI...");
+            BotClient.CPH.LogDebug("[Kick.bot] Trying to refresh UI...");
             _ = RefreshUi();
-            BotClient.CPH.LogDebug("[Kick] Opening configuration window...");
+            BotClient.CPH.LogDebug("[Kick.bot] Opening configuration window...");
             Invoke(() => ConfigWindow.Show());
-            BotClient.CPH.LogDebug("[Kick] Done!");
+            BotClient.CPH.LogDebug("[Kick.bot] Done!");
         }
 
         private async Task RefreshUi()
@@ -139,8 +139,8 @@ namespace Kick.Bot
             if (ConfigWindow == null)
                 return;
             
-            BotClient.CPH.LogDebug("[Kick] Refreshing UI...");
-            BotClient.CPH.LogDebug($"[Kick] Status : Broadcaster {BroadcasterKClient.IsAuthenticated} / Bot {BotKClient.IsAuthenticated}");
+            BotClient.CPH.LogDebug("[Kick.bot] Refreshing UI...");
+            BotClient.CPH.LogDebug($"[Kick.bot] Status : Broadcaster {BroadcasterKClient.IsAuthenticated} / Bot {BotKClient.IsAuthenticated}");
             
             var broadcasterName = "<Disconnected>";
             var broadcasterStatus = "-";
@@ -171,7 +171,7 @@ namespace Kick.Bot
                     }
                 }
 
-                BotClient.CPH.LogDebug($"[Kick] Broadcaster status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
+                BotClient.CPH.LogDebug($"[Kick.bot] Broadcaster status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
             }
 
             var botName = "<Disconnected>";
@@ -203,10 +203,10 @@ namespace Kick.Bot
                     }
                 }
                 
-                BotClient.CPH.LogDebug($"[Kick] Bot status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
+                BotClient.CPH.LogDebug($"[Kick.bot] Bot status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
             }
 
-            BotClient.CPH.LogDebug($"[Kick] Syncing UI");
+            BotClient.CPH.LogDebug($"[Kick.bot] Syncing UI");
             Invoke(() =>
             {
                 var matches = ConfigWindow.Controls.Find("broadcasterLoginBtn", true);
@@ -255,7 +255,7 @@ namespace Kick.Bot
             if (ConfigWindow == null)
                 return;
             
-            BotClient.CPH.LogDebug("[Kick] Refreshing EventListener status UI...");
+            BotClient.CPH.LogDebug("[Kick.bot] Refreshing EventListener status UI...");
             Invoke(() =>
             {
                 var matches = ConfigWindow.Controls.Find("broadcasterSocketStatus", true);
@@ -268,7 +268,7 @@ namespace Kick.Bot
                 ConfigWindow.ToolTip.SetToolTip(control, isConnected ? "Connected" : "Disconnected");
                 control.BackColor = isConnected ? Color.SpringGreen : Color.Red;
             });
-            BotClient.CPH.LogDebug("[Kick] UI refreshed.");
+            BotClient.CPH.LogDebug("[Kick.bot] UI refreshed.");
         }
     }
 }

@@ -27,10 +27,13 @@ using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Reflection;
 using LiteDB;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Windows;
 using Kick.Properties;
+using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 
 namespace Kick.Bot
@@ -51,67 +54,92 @@ namespace Kick.Bot
         public BotEventListener BroadcasterListener { get; private set; }
 
         public BotClient() {
-            CPH.LogDebug("[Kick] Extension loaded. Starting...");
+            CPH.LogDebug("[Kick.bot] Extension loaded. Starting...");
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Chat Message", BotEventListener.BotEventType.Message, new[] { "Kick", "Chat" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Chat config updated", BotEventListener.BotEventType.ChatUpdated, new[] { "Kick", "Chat" });
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new[] { "Kick", "Commands" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands Cooldown" });
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Message Pinned", BotEventListener.BotEventType.MessagePinned, new[] { "Kick", "Chat" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new[] { "Kick", "Chat" });
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Follow", BotEventListener.BotEventType.Follow, new[] { "Kick", "Channel" });
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Subscription", BotEventListener.BotEventType.Subscription, new[] { "Kick", "Subscriptions" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Sub Gift (x1)", BotEventListener.BotEventType.SubGift, new[] { "Kick", "Subscriptions" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Sub Gifts (multiple)", BotEventListener.BotEventType.SubGifts, new[] { "Kick", "Subscriptions" });
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Chat Message Deleted", BotEventListener.BotEventType.MessageDeleted, new[] { "Kick", "Moderation" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Timeout", BotEventListener.BotEventType.Timeout, new[] { "Kick", "Moderation" });
+            CPH.RegisterCustomTrigger("[Kick.bot] User Ban", BotEventListener.BotEventType.UserBanned, new[] { "Kick", "Moderation" });
+            CPH.RegisterCustomTrigger("[Kick.bot] User Unban", BotEventListener.BotEventType.UserUnbanned, new[] { "Kick", "Moderation" });
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Poll Created", BotEventListener.BotEventType.PollCreated, new[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Poll Updated", BotEventListener.BotEventType.PollUpdated, new[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Poll Completed", BotEventListener.BotEventType.PollCompleted, new[] { "Kick", "Polls" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Poll Cancelled", BotEventListener.BotEventType.PollCancelled, new[] { "Kick", "Polls" });
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Stream Started", BotEventListener.BotEventType.StreamStarted, new[] { "Kick", "Stream" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Stream Ended", BotEventListener.BotEventType.StreamEnded, new[] { "Kick", "Stream" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Title/Category Changed", BotEventListener.BotEventType.TitleChanged, new[] { "Kick", "Stream" });
+
+            CPH.RegisterCustomTrigger("[Kick.bot] Raid", BotEventListener.BotEventType.Raid, new[] { "Kick" });
             
-            CPH.RegisterCustomTrigger("[Kick] Chat Message", BotEventListener.BotEventType.Message, new[] { "Kick", "Chat" });
-            CPH.RegisterCustomTrigger("[Kick] Chat config updated", BotEventListener.BotEventType.ChatUpdated, new[] { "Kick", "Chat" });
-
-            CPH.RegisterCustomTrigger("[Kick] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new[] { "Kick", "Commands" });
-            CPH.RegisterCustomTrigger("[Kick] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands Cooldown" });
-
-            CPH.RegisterCustomTrigger("[Kick] Message Pinned", BotEventListener.BotEventType.MessagePinned, new[] { "Kick", "Chat" });
-            CPH.RegisterCustomTrigger("[Kick] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new[] { "Kick", "Chat" });
-
-            CPH.RegisterCustomTrigger("[Kick] Follow", BotEventListener.BotEventType.Follow, new[] { "Kick", "Channel" });
-
-            CPH.RegisterCustomTrigger("[Kick] Subscription", BotEventListener.BotEventType.Subscription, new[] { "Kick", "Subscriptions" });
-            CPH.RegisterCustomTrigger("[Kick] Sub Gift (x1)", BotEventListener.BotEventType.SubGift, new[] { "Kick", "Subscriptions" });
-            CPH.RegisterCustomTrigger("[Kick] Sub Gifts (multiple)", BotEventListener.BotEventType.SubGifts, new[] { "Kick", "Subscriptions" });
-
-            CPH.RegisterCustomTrigger("[Kick] Chat Message Deleted", BotEventListener.BotEventType.MessageDeleted, new[] { "Kick", "Moderation" });
-            CPH.RegisterCustomTrigger("[Kick] Timeout", BotEventListener.BotEventType.Timeout, new[] { "Kick", "Moderation" });
-            CPH.RegisterCustomTrigger("[Kick] User Ban", BotEventListener.BotEventType.UserBanned, new[] { "Kick", "Moderation" });
-            CPH.RegisterCustomTrigger("[Kick] User Unban", BotEventListener.BotEventType.UserUnbanned, new[] { "Kick", "Moderation" });
-
-            CPH.RegisterCustomTrigger("[Kick] Poll Created", BotEventListener.BotEventType.PollCreated, new[] { "Kick", "Polls" });
-            CPH.RegisterCustomTrigger("[Kick] Poll Updated", BotEventListener.BotEventType.PollUpdated, new[] { "Kick", "Polls" });
-            CPH.RegisterCustomTrigger("[Kick] Poll Completed", BotEventListener.BotEventType.PollCompleted, new[] { "Kick", "Polls" });
-            CPH.RegisterCustomTrigger("[Kick] Poll Cancelled", BotEventListener.BotEventType.PollCancelled, new[] { "Kick", "Polls" });
-
-            CPH.RegisterCustomTrigger("[Kick] Stream Started", BotEventListener.BotEventType.StreamStarted, new[] { "Kick", "Stream" });
-            CPH.RegisterCustomTrigger("[Kick] Stream Ended", BotEventListener.BotEventType.StreamEnded, new[] { "Kick", "Stream" });
-            CPH.RegisterCustomTrigger("[Kick] Title/Category Changed", BotEventListener.BotEventType.TitleChanged, new[] { "Kick", "Stream" });
-
-            CPH.RegisterCustomTrigger("[Kick] Raid", BotEventListener.BotEventType.Raid, new[] { "Kick" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Reward Redeemed (Any)", BotEventListener.BotEventType.RewardRedeemed, new[] { "Kick", "Rewards" });
             
-            CPH.RegisterCustomTrigger("[Kick] Reward Redeemed (Any)", BotEventListener.BotEventType.RewardRedeemed, new[] { "Kick", "Rewards" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Prediction Created", BotEventListener.BotEventType.PredictionCreated, new[] { "Kick", "Predictions" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Prediction Updated", BotEventListener.BotEventType.PredictionUpdated, new[] { "Kick", "Predictions" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Prediction Locked", BotEventListener.BotEventType.PredictionLocked, new[] { "Kick", "Predictions" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Prediction Resolved", BotEventListener.BotEventType.PredictionResolved, new[] { "Kick", "Predictions" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Prediction Cancelled", BotEventListener.BotEventType.PredictionCancelled, new[] { "Kick", "Predictions" });
             
-            CPH.RegisterCustomTrigger("[Kick] Prediction Created", BotEventListener.BotEventType.PredictionCreated, new[] { "Kick", "Predictions" });
-            CPH.RegisterCustomTrigger("[Kick] Prediction Updated", BotEventListener.BotEventType.PredictionUpdated, new[] { "Kick", "Predictions" });
-            CPH.RegisterCustomTrigger("[Kick] Prediction Locked", BotEventListener.BotEventType.PredictionLocked, new[] { "Kick", "Predictions" });
-            CPH.RegisterCustomTrigger("[Kick] Prediction Resolved", BotEventListener.BotEventType.PredictionResolved, new[] { "Kick", "Predictions" });
-            CPH.RegisterCustomTrigger("[Kick] Prediction Cancelled", BotEventListener.BotEventType.PredictionCancelled, new[] { "Kick", "Predictions" });
+            CPH.LogDebug("[Kick.bot] Basic triggers registered.");
             
-            CPH.LogDebug("[Kick] Basic triggers registered.");
-            
-            CPH.LogDebug("[Kick] Starting UI thread...");
+            CPH.LogDebug("[Kick.bot] Starting UI thread...");
             GlobalPluginUi = new PluginUi();
             
             // Broadcaster
-            CPH.LogDebug("[Kick] Client initialization...");
+            CPH.LogDebug("[Kick.bot] Client initialization...");
             Client.Browser.OnAuthenticated += Authenticated;
             
             // Bot
-            CPH.LogDebug("[Kick] Bot initialization...");
+            CPH.LogDebug("[Kick.bot] Bot initialization...");
             AltClient.Browser.OnAuthenticated += BotAuthenticated;
             
             CommandCounter.PruneVolatile();
-            CPH.LogDebug("[Kick] Init completed.");
+            CPH.LogDebug("[Kick.bot] Init completed.");
         }
 
         ~BotClient()
         {
-            CPH.LogDebug("[Kick] Extension is shuting down");
+            CPH.LogDebug("[Kick.bot] Extension is shuting down");
+        }
+
+        public static bool CheckCompatibility()
+        {
+            CPH.LogError("[Kick.bot] Running environment testing");
+            try
+            {
+                CheckAssemblies();
+                return true;
+            }
+            catch(Exception e)
+            {
+                CPH.LogError("[Kick.bot] Dependencies assemblies version mismatch");
+                CPH.LogError(e.Message);
+                var result = MessageBox.Show($"This version of Kick.bot ({Assembly.GetExecutingAssembly().GetName().Version}) is not compatible with the running version of Streamer.bot ({CPH.GetVersion()}). Kick.bot must be updated and won't run in its current state.\r\n\r\nDo you want to check for updates on the project page?", "Kick.bot - Error", MessageBoxButton.YesNo, MessageBoxImage.Error, MessageBoxResult.Yes);
+                if(result == MessageBoxResult.Yes)
+                    System.Diagnostics.Process.Start("https://github.com/Sehelitar/Kick.bot/releases/latest");
+                return false;
+            }
+        }
+
+        internal static void CheckAssemblies()
+        {
+            _ = typeof(WebView2).Assembly.FullName;
+            _ = typeof(LiteDatabase).Assembly.FullName;
         }
 
         public static bool OpenConfig()
@@ -123,14 +151,14 @@ namespace Kick.Bot
         // @deprecated
         public void BeginBroadcasterAuthentication()
         {
-            CPH.LogDebug("[Kick] Begin broadcaster authentication...");
+            CPH.LogDebug("[Kick.bot] Begin broadcaster authentication...");
             Client.Browser.BeginAuthentication();
         }
         
         // @deprecated
         public void BeginBotAuthentication()
         {
-            CPH.LogDebug("[Kick] Begin bot authentication...");
+            CPH.LogDebug("[Kick.bot] Begin bot authentication...");
             AltClient.Browser.BeginAuthentication();
         }
 
@@ -139,7 +167,7 @@ namespace Kick.Bot
             Task.Run(async () =>
             {
                 AuthenticatedUser = await Client.GetCurrentUserInfos();
-                CPH.LogDebug($"[Kick] Connected as {AuthenticatedUser.Username}");
+                CPH.LogDebug($"[Kick.bot] Connected as {AuthenticatedUser.Username}");
                 CPH.SetGlobalVar("KickNotFirstLaunch", true);
 
                 var logoPath = Path.Combine(Path.GetTempPath(), "kick_pp.png");
@@ -167,7 +195,7 @@ namespace Kick.Bot
                 }
                 catch (Exception ex)
                 {
-                    CPH.LogDebug($"[Kick] An error occured when trying to fetch user's profile image :");
+                    CPH.LogDebug($"[Kick.bot] An error occured when trying to fetch user's profile image :");
                     CPH.LogError($"{ex}");
                 }
                 
@@ -183,11 +211,11 @@ namespace Kick.Bot
                 {
                     BroadcasterListener = await StartListeningToSelf();
                     GlobalPluginUi.RefreshEventListenerStatus();
-                    CPH.LogDebug($"[Kick] Listener active.");
+                    CPH.LogDebug($"[Kick.bot] Listener active.");
                 }
                 catch (Exception ex)
                 {
-                    CPH.LogError($"[Kick] An error occurred while starting listener : {ex}");
+                    CPH.LogError($"[Kick.bot] An error occurred while starting listener : {ex}");
                     return;
                 }
 
@@ -200,7 +228,7 @@ namespace Kick.Bot
             Task.Run(async () =>
             {
                 AuthenticatedBot = await AltClient.GetCurrentUserInfos();
-                CPH.LogDebug($"[Kick] Bot connected as {AuthenticatedBot.Username}");
+                CPH.LogDebug($"[Kick.bot] Bot connected as {AuthenticatedBot.Username}");
                 
                 var logoPath = Path.Combine(Path.GetTempPath(), "kick_b_pp.png");
                 try
@@ -227,7 +255,7 @@ namespace Kick.Bot
                 }
                 catch (Exception ex)
                 {
-                    CPH.LogDebug($"[Kick] An error occured when trying to fetch user's profile image :");
+                    CPH.LogDebug($"[Kick.bot] An error occured when trying to fetch user's profile image :");
                     CPH.LogError($"{ex}");
                 }
                 
@@ -246,7 +274,7 @@ namespace Kick.Bot
             if (AuthenticatedUser == null)
                 throw new Exception("authentication required");
 
-            CPH.LogDebug($"[Kick] Listening events for channel {channelName}");
+            CPH.LogDebug($"[Kick.bot] Listening events for channel {channelName}");
             var channel = await Client.GetChannelInfos(channelName);
             return new BotEventListener(Client.GetEventListener(), channel);
         }
@@ -256,7 +284,7 @@ namespace Kick.Bot
             if (AuthenticatedUser == null)
                 throw new Exception("Authentication required");
 
-            CPH.LogDebug($"[Kick] Listening events for channel {AuthenticatedUser.StreamerChannel.Slug}");
+            CPH.LogDebug($"[Kick.bot] Listening events for channel {AuthenticatedUser.StreamerChannel.Slug}");
             var channel = await Client.GetChannelInfos(AuthenticatedUser.StreamerChannel.Slug);
             return new BotEventListener(Client.GetEventListener(), channel);
         }
@@ -278,7 +306,7 @@ namespace Kick.Bot
             }
             catch(Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while reloading rewards : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while reloading rewards : {ex}");
                 return false;
             }
         }
@@ -321,7 +349,7 @@ namespace Kick.Bot
             }
             catch(Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while sending a message to chatroom : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while sending a message to chatroom : {ex}");
                 return false;
             }
         }
@@ -351,7 +379,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while deleting a message from chatroom : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while deleting a message from chatroom : {ex}");
                 return false;
             }
         }
@@ -421,7 +449,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while sending a reply : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while sending a reply : {ex}");
                 return false;
             }
         }
@@ -441,7 +469,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while clearing chat : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while clearing chat : {ex}");
                 return false;
             }
         }
@@ -465,7 +493,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while fetching user infos : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while fetching user infos : {ex}");
                 return false;
             }
         }
@@ -480,7 +508,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while fetching broadcaster infos : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while fetching broadcaster infos : {ex}");
                 return false;
             }
         }
@@ -529,7 +557,7 @@ namespace Kick.Bot
                 }
                 catch (Exception e)
                 {
-                    CPH.LogError($"[Kick] A database error occured (l:GetKickChannelInfos) : {e}");
+                    CPH.LogError($"[Kick.bot] A database error occured (l:GetKickChannelInfos) : {e}");
                 }
 
                 var profilePic = channelInfos.User.ProfilePic ?? "https://dbxmjjzl5pc1g.cloudfront.net/49e68df9-6ede-4a97-b593-340a400cb57b/images/user-profile-pic.png";
@@ -611,7 +639,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while fetching channel infos : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while fetching channel infos : {ex}");
                 return false;
             }
         }
@@ -636,7 +664,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while adding a new VIP : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while adding a new VIP : {ex}");
                 return false;
             }
         }
@@ -659,7 +687,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while removing a VIP : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while removing a VIP : {ex}");
                 return false;
             }
         }
@@ -682,7 +710,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while adding a new OG : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while adding a new OG : {ex}");
                 return false;
             }
         }
@@ -705,7 +733,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while removing an OG : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while removing an OG : {ex}");
                 return false;
             }
         }
@@ -729,7 +757,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while adding a moderator : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while adding a moderator : {ex}");
                 return false;
             }
         }
@@ -753,7 +781,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while removing a moderator : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while removing a moderator : {ex}");
                 return false;
             }
         }
@@ -782,7 +810,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while banning a user : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while banning a user : {ex}");
                 return false;
             }
         }
@@ -813,7 +841,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while temporarily banning a user : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while temporarily banning a user : {ex}");
                 return false;
             }
         }
@@ -837,7 +865,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while unbanning a user : {ex}");
                 return false;
             }
         }
@@ -872,7 +900,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while starting a new poll : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while starting a new poll : {ex}");
                 return false;
             }
         }
@@ -906,7 +934,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while changing stream title : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while changing stream title : {ex}");
                 return false;
             }
         }
@@ -971,7 +999,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to create to clip : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to create to clip : {ex}");
             }
 
             return false;
@@ -1031,7 +1059,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
             }
 
             return false;
@@ -1059,7 +1087,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch clip URL : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch clip URL : {ex}");
             }
 
             return false;
@@ -1105,7 +1133,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
             }
             return false;
         }
@@ -1148,7 +1176,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
             }
             return false;
         }
@@ -1188,7 +1216,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat protection : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat protection : {ex}");
             }
             return false;
         }
@@ -1227,7 +1255,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
             }
             return false;
         }
@@ -1267,7 +1295,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
             }
             return false;
         }
@@ -1306,7 +1334,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
             }
             return false;
         }
@@ -1336,7 +1364,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
                 return false;
             }
         }
@@ -1357,7 +1385,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to unpin a message : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to unpin a message : {ex}");
                 return false;
             }
         }
@@ -1420,7 +1448,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch pinned message : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch pinned message : {ex}");
             }
             return false;
         }
@@ -1543,7 +1571,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch follower infos : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch follower infos : {ex}");
                 return false;
             }
         }
@@ -1588,7 +1616,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch a random active user : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch a random active user : {ex}");
                 return false;
             }
         }
@@ -1614,7 +1642,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch channel counters : {ex}");
                 return false;
             }
         }
@@ -1645,7 +1673,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while unbanning a user : {ex}");
                 return false;
             }
         }
@@ -1681,7 +1709,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while unbanning a user : {ex}");
                 return false;
             }
         }
@@ -1741,7 +1769,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch channel counters : {ex}");
                 return false;
             }
         }
@@ -1796,7 +1824,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch channel counters : {ex}");
                 return false;
             }
         }
@@ -1819,7 +1847,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while unbanning a user : {ex}");
                 return false;
             }
         }
@@ -1860,7 +1888,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] APIError : {ex}");
+                CPH.LogDebug($"[Kick.bot] APIError : {ex}");
                 return false;
             }
         }
@@ -1883,7 +1911,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] APIError : {ex}");
+                CPH.LogDebug($"[Kick.bot] APIError : {ex}");
                 return false;
             }
         }
@@ -1906,7 +1934,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] APIError : {ex}");
+                CPH.LogDebug($"[Kick.bot] APIError : {ex}");
                 return false;
             }
         }
@@ -1956,7 +1984,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to create a prediction : {ex}");
                 return false;
             }
         }
@@ -1994,7 +2022,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to create a prediction : {ex}");
                 return false;
             }
         }
@@ -2041,7 +2069,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to create a prediction : {ex}");
                 return false;
             }
         }
@@ -2064,7 +2092,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to cancel the prediction : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to cancel the prediction : {ex}");
                 return false;
             }
         }
@@ -2087,7 +2115,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to lock the prediction : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to lock the prediction : {ex}");
                 return false;
             }
         }
@@ -2112,7 +2140,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to resolve the prediction : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to resolve the prediction : {ex}");
                 return false;
             }
         }
@@ -2134,7 +2162,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to enable multistreaming : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to enable multistreaming : {ex}");
                 return false;
             }
         }
@@ -2154,7 +2182,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to disable multistreaming : {ex}");
+                CPH.LogDebug($"[Kick.bot] An error occurred while trying to disable multistreaming : {ex}");
                 return false;
             }
         }

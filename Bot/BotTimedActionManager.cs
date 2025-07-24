@@ -45,7 +45,7 @@ namespace Kick.Bot
                     action.TimeUntil -= .2d;
 
                 if (!action.AreConditionsMet()) continue;
-                BotClient.CPH.LogInfo($"[Kick] Timed action \"{action.TimedAction.Name}\" (ID {action.TimedAction.Id}) triggered!");
+                BotClient.CPH.LogInfo($"[Kick.bot] Timed action \"{action.TimedAction.Name}\" (ID {action.TimedAction.Id}) triggered!");
                 action.AlreadyTriggered = true;
                 action.ResetConditions();
                 BotClient.CPH.TriggerCodeEvent("kickTimedAction." + action.TimedAction.Id, false);
@@ -55,16 +55,16 @@ namespace Kick.Bot
         public static void ReloadTimedActions()
         {
             var rawActions = StreamerBotAppSettings.Settings.TimedActions.Timers;
-            BotClient.CPH.LogInfo($"[Kick] {rawActions.Count} timed action found");
+            BotClient.CPH.LogInfo($"[Kick.bot] {rawActions.Count} timed action found");
 
             foreach (var rawAction in rawActions)
             {
                 var action = (from ex in Actions where ex.TimedAction.Id == rawAction.Id select ex).FirstOrDefault() ?? new BotTimedAction();
                 action.TimedAction = rawAction;
 
-                BotClient.CPH.LogInfo($"[Kick] Resetting timed action \"{rawAction.Name}\" (ID {rawAction.Id})");
+                BotClient.CPH.LogInfo($"[Kick.bot] Resetting timed action \"{rawAction.Name}\" (ID {rawAction.Id})");
                 action.ResetConditions();
-                BotClient.CPH.RegisterCustomTrigger("[Kick] Timed Action / " + rawAction.Name, "kickTimedAction."+rawAction.Id, new[] { "Kick", "Timed Actions" });
+                BotClient.CPH.RegisterCustomTrigger("[Kick.bot] Timed Action / " + rawAction.Name, "kickTimedAction."+rawAction.Id, new[] { "Kick", "Timed Actions" });
 
                 if(!Actions.Contains(action))
                     Actions.Add(action);

@@ -94,7 +94,7 @@ namespace Kick.Bot
 
         private static void LoadCommandsSettings()
         {
-            BotClient.CPH?.LogVerbose("[Kick] Loading chat commands");
+            BotClient.CPH?.LogVerbose("[Kick.bot] Loading chat commands");
             var fs = new FileStream("./data/commands.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();
@@ -112,7 +112,7 @@ namespace Kick.Bot
 
         private static void LoadSettings()
         {
-            BotClient.CPH?.LogVerbose("[Kick] Loading main cofiguration");
+            BotClient.CPH?.LogVerbose("[Kick.bot] Loading main cofiguration");
             var fs = new FileStream("./data/settings.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();

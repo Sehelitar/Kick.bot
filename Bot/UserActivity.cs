@@ -51,7 +51,7 @@ namespace Kick.Bot
             }
             catch (Exception e)
             {
-                BotClient.CPH.LogError($"[Kick] A database error occured (UserActivity.Dispose) : {e}");
+                BotClient.CPH.LogError($"[Kick.bot] A database error occured (UserActivity.Dispose) : {e}");
             }
         }
 
@@ -68,7 +68,7 @@ namespace Kick.Bot
             }
             catch (Exception e)
             {
-                BotClient.CPH.LogError($"[Kick] A database error occured (UserActivity.ForUser) : {e}");
+                BotClient.CPH.LogError($"[Kick.bot] A database error occured (UserActivity.ForUser) : {e}");
                 return new UserActivity();
             }
         }

@@ -105,7 +105,7 @@ namespace Kick.API.Internal
 
                         Bridge = new AsyncJsBridge();
                         WebController.CoreWebView2.AddHostObjectToScript("bridge", Bridge);
-                        BotClient.CPH.LogDebug($"[Kick] Bridge registered for {options.ProfileName}");
+                        BotClient.CPH.LogDebug($"[Kick.bot] Bridge registered for {options.ProfileName}");
                     }
                     catch (Exception ex)
                     {
@@ -123,7 +123,7 @@ namespace Kick.API.Internal
         
         public void BeginAuthentication()
         {
-            BotClient.CPH.LogInfo($"[Kick] Attempting to authenticate with Kick... IsAlreadyAuth={IsAuthenticated}");
+            BotClient.CPH.LogInfo($"[Kick.bot] Attempting to authenticate with Kick... IsAlreadyAuth={IsAuthenticated}");
             if (IsAuthenticated || Visible) return;
 
             // Automatically open login form
@@ -188,11 +188,11 @@ const loopInterval = setInterval(loop, 500);
             {
                 _isWaitingForAuthentication = false;
                 if(response.IsFaulted)
-                    BotClient.CPH.LogError($"[Kick] An exception occured while looking for authentication status : {response.Exception}");
+                    BotClient.CPH.LogError($"[Kick.bot] An exception occured while looking for authentication status : {response.Exception}");
                 else if (response.IsCompleted)
                 {
                     IsAuthenticated = true;
-                    BotClient.CPH.LogInfo($"[Kick] Authenticated with Kick!");
+                    BotClient.CPH.LogInfo($"[Kick.bot] Authenticated with Kick!");
                     if (InvokeRequired)
                         Invoke((Action)Hide);
                     else
@@ -204,7 +204,7 @@ const loopInterval = setInterval(loop, 500);
         
         public async Task BeginLogout()
         {
-            BotClient.CPH.LogInfo($"[Kick] Logging out of Kick...");
+            BotClient.CPH.LogInfo($"[Kick.bot] Logging out of Kick...");
             if (!IsAuthenticated) return;
             
             // Open menu
@@ -290,7 +290,7 @@ return true;
             }
             catch (Exception ex)
             {
-                BotClient.CPH.LogError($"[Kick] An exception occured while executing a Javascript payload : {ex}");
+                BotClient.CPH.LogError($"[Kick.bot] An exception occured while executing a Javascript payload : {ex}");
                 throw new Exception("An error occured while executing a Javascript payload.", ex);
             }
         }
@@ -320,13 +320,13 @@ return true;
                 id = Guid.NewGuid().ToString();
             }
             while (!_callbacks.TryAdd(id, callback));
-            BotClient.CPH.LogDebug($"[Kick] Bridge callback registered (ID: {id})");
+            BotClient.CPH.LogDebug($"[Kick.bot] Bridge callback registered (ID: {id})");
         }
 
         public void Resolve(string id, string data)
         {
             if (!_callbacks.ContainsKey(id)) return;
-            BotClient.CPH.LogDebug($"[Kick] Response received for callback ID {id}");
+            BotClient.CPH.LogDebug($"[Kick.bot] Response received for callback ID {id}");
             if(_callbacks.TryRemove(id, out var target))
                 target.Invoke(data);
         }

@@ -71,7 +71,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred while loading the bot settings : {ex}");
+                CPH.LogError($"[Kick.bot] An error occurred while loading the bot settings : {ex}");
             }
         }
 
@@ -108,7 +108,7 @@ namespace Kick.Bot
                     _messagesHistory.Dequeue();
                 _messagesHistory.Enqueue(message);
 
-                CPH.LogVerbose($"[Kick] Chat :: {message.Sender.Username} : {message.Content}");
+                CPH.LogVerbose($"[Kick.bot] Chat :: {message.Sender.Username} : {message.Content}");
                 var isCommand = false;
 
                 var firstMessage = true;
@@ -144,7 +144,7 @@ namespace Kick.Bot
                 }
                 catch (Exception inEx)
                 {
-                    CPH.LogError($"[Kick] An error occurred while searching for chat commands : {inEx}");
+                    CPH.LogError($"[Kick.bot] An error occurred while searching for chat commands : {inEx}");
                 }
 
                 var emoteRE = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
@@ -217,7 +217,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred while handling an incoming chat message : {ex}");
+                CPH.LogError($"[Kick.bot] An error occurred while handling an incoming chat message : {ex}");
             }
         }
 
@@ -287,7 +287,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred on message deletion : {ex}");
+                CPH.LogError($"[Kick.bot] An error occurred on message deletion : {ex}");
             }
         }
 
@@ -298,7 +298,7 @@ namespace Kick.Bot
                 if (followEvent.Channel.Id != Channel.Id || !followEvent.IsFollowing)
                     return;
 
-                CPH.LogDebug($"[Kick] Nouveau follower : {followEvent.User.Username}");
+                CPH.LogDebug($"[Kick.bot] Nouveau follower : {followEvent.User.Username}");
                 UpdateActivityDB(followEvent.User);
                 using (var activity = UserActivity.ForUser(followEvent.User.Id))
                 {
@@ -331,7 +331,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when a new viewer followed : {ex}");
+                CPH.LogError($"[Kick.bot] An error occurred when a new viewer followed : {ex}");
             }
         }
 
@@ -347,7 +347,7 @@ namespace Kick.Bot
 
                 if (!bannedUserEvent.IsBanned)
                 {
-                    CPH.LogDebug($"[Kick] Unban :: {bannedUserEvent.Banned.Username}");
+                    CPH.LogDebug($"[Kick.bot] Unban :: {bannedUserEvent.Banned.Username}");
 
                     SendToQueue(new BotEvent()
                     {
@@ -372,7 +372,7 @@ namespace Kick.Bot
                 {
                     // Timeout
                     var duration = bannedUserEvent.Ban.BannedUntil.Value.Subtract(bannedUserEvent.Ban.BannedSince).TotalSeconds;
-                    CPH.LogDebug($"[Kick] Timeout :: {bannedUserEvent.Banned.Username} ({duration}s).");
+                    CPH.LogDebug($"[Kick.bot] Timeout :: {bannedUserEvent.Banned.Username} ({duration}s).");
                     SendToQueue(new BotEvent()
                     {
                         ActionId = BotEventType.Timeout,
@@ -395,7 +395,7 @@ namespace Kick.Bot
                 else
                 {
                     // Ban
-                    CPH.LogDebug($"[Kick] Ban :: {bannedUserEvent.Banned.Username}");
+                    CPH.LogDebug($"[Kick.bot] Ban :: {bannedUserEvent.Banned.Username}");
                     SendToQueue(new BotEvent()
                     {
                         ActionId = BotEventType.UserBanned,
@@ -417,7 +417,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when a viewer got banned : {ex}");
+                CPH.LogError($"[Kick.bot] An error occurred when a viewer got banned : {ex}");
             }
         }
 
@@ -429,7 +429,7 @@ namespace Kick.Bot
                     return;
 
                 // OnSubGift
-                CPH.LogDebug($"[Kick] New gifts from {giftEvent.User.Username} ({giftEvent.GiftedUsers.Length} subs gifted)");
+                CPH.LogDebug($"[Kick.bot] New gifts from {giftEvent.User.Username} ({giftEvent.GiftedUsers.Length} subs gifted)");
 
                 UpdateActivityDB(giftEvent.User);
                 foreach (var giftTarget in giftEvent.GiftedUsers)
@@ -497,7 +497,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when a viewer gifted subs : {ex}");
+                CPH.LogError($"[Kick.bot] An error occurred when a viewer gifted subs : {ex}");
             }
         }
 
@@ -517,7 +517,7 @@ namespace Kick.Bot
 
                 if (subEvent.IsNewSubscriber)
                 {
-                    CPH.LogDebug($"[Kick] New subscriber : {subEvent.User.Username}");
+                    CPH.LogDebug($"[Kick.bot] New subscriber : {subEvent.User.Username}");
 
                     SendToQueue(new BotEvent()
                     {
@@ -537,7 +537,7 @@ namespace Kick.Bot
                 }
                 else
                 {
-                    CPH.LogDebug($"[Kick] Subscription renewed : {subEvent.User.Username} ({subEvent.Subscription.Total} mois)");
+                    CPH.LogDebug($"[Kick.bot] Subscription renewed : {subEvent.User.Username} ({subEvent.Subscription.Total} mois)");
 
                     SendToQueue(new BotEvent()
                     {
@@ -560,7 +560,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when a viewer subscribed : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when a viewer subscribed : {ex.Message}");
             }
         }
 
@@ -571,7 +571,7 @@ namespace Kick.Bot
                 if (chatUpdateEvent.Id != Channel.Id)
                     return;
 
-                CPH.LogDebug($"[Kick] Chat mode changed");
+                CPH.LogDebug($"[Kick.bot] Chat mode changed");
 
                 SendToQueue(new BotEvent()
                 {
@@ -592,7 +592,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred while handling chat mode change : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred while handling chat mode change : {ex.Message}");
             }
         }
         
@@ -654,7 +654,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred while handling chat mode change : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred while handling chat mode change : {ex.Message}");
             }
         }
 
@@ -665,7 +665,7 @@ namespace Kick.Bot
                 if (pollUpdateEvent.Channel.Id != Channel.Id)
                     return;
 
-                CPH.LogDebug($"[Kick] Poll cancelled");
+                CPH.LogDebug($"[Kick.bot] Poll cancelled");
 
                 SendToQueue(new BotEvent()
                 {
@@ -678,7 +678,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when the current poll got cancelled : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when the current poll got cancelled : {ex.Message}");
             }
         }
 
@@ -689,7 +689,7 @@ namespace Kick.Bot
                 if (pollUpdateEvent.Channel.Id != Channel.Id)
                     return;
 
-                CPH.LogDebug($"[Kick] Poll created");
+                CPH.LogDebug($"[Kick.bot] Poll created");
 
                 var args = new Dictionary<string, object>() {
                     { "poll.StartedAt", pollUpdateEvent.Date },
@@ -724,7 +724,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when a new poll has been created : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when a new poll has been created : {ex.Message}");
             }
         }
 
@@ -768,7 +768,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when the current poll got updated (new votes) : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when the current poll got updated (new votes) : {ex.Message}");
             }
         }
 
@@ -829,7 +829,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when the current poll closed : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when the current poll closed : {ex.Message}");
             }
         }
 
@@ -855,7 +855,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when the stream stopped : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when the stream stopped : {ex.Message}");
             }
         }
 
@@ -896,7 +896,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when the stream started : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when the stream started : {ex.Message}");
             }
         }
 
@@ -933,7 +933,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when the stream infos got updated : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when the stream infos got updated : {ex.Message}");
             }
         }
 
@@ -960,7 +960,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when a raid appeared : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when a raid appeared : {ex.Message}");
             }
         }
 
@@ -1019,7 +1019,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when reading pinned message data : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when reading pinned message data : {ex.Message}");
             }
         }
 
@@ -1038,7 +1038,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when reading unpinned message data : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when reading unpinned message data : {ex.Message}");
             }
         }
 
@@ -1072,7 +1072,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when reading redeemed reward data : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when reading redeemed reward data : {ex.Message}");
             }
         }
         
@@ -1103,7 +1103,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when reading prediction data : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when reading prediction data : {ex.Message}");
             }
         }
         
@@ -1161,7 +1161,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred when reading prediction data : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred when reading prediction data : {ex.Message}");
             }
         }
 
