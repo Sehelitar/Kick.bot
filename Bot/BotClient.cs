@@ -27,10 +27,13 @@ using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Reflection;
 using LiteDB;
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Windows.Forms;
 using Kick.Properties;
+using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 
 namespace Kick.Bot
@@ -112,6 +115,31 @@ namespace Kick.Bot
         ~BotClient()
         {
             CPH.LogDebug("[Kick] Extension is shuting down");
+        }
+        
+        public static bool CheckCompatibility()
+        {
+            CPH.LogError("[Kick.bot] Running environment testing");
+            try
+            {
+                CheckAssemblies();
+                return true;
+            }
+            catch(Exception e)
+            {
+                CPH.LogError("[Kick.bot] Dependencies assemblies version mismatch");
+                CPH.LogError(e.Message);
+                var result = MessageBox.Show($"This version of Kick.bot ({Assembly.GetExecutingAssembly().GetName().Version}) is not compatible with the running version of Streamer.bot ({CPH.GetVersion()}). Kick.bot must be updated and won't run in its current state.\r\n\r\nDo you want to check for updates on the project page?", "Kick.bot - Error", MessageBoxButtons.YesNo, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
+                if(result == DialogResult.Yes)
+                    System.Diagnostics.Process.Start("https://github.com/Sehelitar/Kick.bot/releases/latest");
+                return false;
+            }
+        }
+
+        internal static void CheckAssemblies()
+        {
+            _ = typeof(WebView2).Assembly.FullName;
+            _ = typeof(LiteDatabase).Assembly.FullName;
         }
 
         public static bool OpenConfig()
