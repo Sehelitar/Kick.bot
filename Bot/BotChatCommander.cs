@@ -18,10 +18,12 @@
 using Kick.API.Events;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text.RegularExpressions;
 using static Kick.Bot.BotClient;
 using System.Linq;
 using LiteDB;
+using Streamer.bot.Plugin.Interface;
 
 namespace Kick.Bot
 {
@@ -331,7 +333,8 @@ namespace Kick.Bot
         {
             try
             {
-                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+                using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                 {
                     var dbCollection = database.GetCollection<CommandCounter>(Persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
                     dbCollection.Upsert(this);
@@ -350,7 +353,8 @@ namespace Kick.Bot
         {
             try
             {
-                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+                using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                 {
                     var dbCollection = database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
                     var counterQuery = from counterObject in dbCollection.Query()
@@ -373,7 +377,8 @@ namespace Kick.Bot
         {
             try
             {
-                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+                using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                 {
                     var dbCollection = database.GetCollection<CommandCounter>(persist ? PersistentCollection : VolatileCollection, BsonAutoId.Int64);
                     var counterQuery = from counterObject in dbCollection.Query()
@@ -396,7 +401,8 @@ namespace Kick.Bot
         {
             try
             {
-                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+                using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                 {
                     database.DropCollection(VolatileCollection);
                 }

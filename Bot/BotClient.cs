@@ -546,7 +546,8 @@ namespace Kick.Bot
                 UserActivity extraUser = null;
                 try
                 {
-                    using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                    var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+                    using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                     {
                         var dbCollection = database.GetCollection<UserActivity>("users");
                         var activityQuery = from activityObject in dbCollection.Query()
@@ -1591,7 +1592,8 @@ namespace Kick.Bot
                     interval = Convert.ToInt32(intervalValue);
                 }
 
-                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+                using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                 {
                     var now = DateTime.Now;
                     var dbCollection = database.GetCollection<UserActivity>("users");
