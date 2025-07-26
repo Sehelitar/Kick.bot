@@ -20,6 +20,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Timers;
+using Streamer.bot.Plugin.Interface;
 
 namespace Kick.Bot
 {
@@ -58,7 +59,8 @@ namespace Kick.Bot
             if (_configWatcher != null)
                 return;
 
-            _configWatcher = new FileSystemWatcher("./data/", "*.json")
+            var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+            _configWatcher = new FileSystemWatcher(Path.Combine(basePath, "data"), "*.json")
             {
                 NotifyFilter = NotifyFilters.Attributes
                     | NotifyFilters.CreationTime
@@ -95,7 +97,8 @@ namespace Kick.Bot
         private static void LoadCommandsSettings()
         {
             BotClient.CPH?.LogVerbose("[Kick.bot] Loading chat commands");
-            var fs = new FileStream("./data/commands.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+            var fs = new FileStream(Path.Combine(basePath, "data/commands.json"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();
             _commands = JsonConvert.DeserializeObject<StreamerBotCommands>(config);
@@ -113,7 +116,8 @@ namespace Kick.Bot
         private static void LoadSettings()
         {
             BotClient.CPH?.LogVerbose("[Kick.bot] Loading main cofiguration");
-            var fs = new FileStream("./data/settings.json", FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+            var fs = new FileStream(Path.Combine(basePath, "data/settings.json"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             var config = new StreamReader(fs).ReadToEnd();
             fs.Close();
             _settings = JsonConvert.DeserializeObject<StreamerBotSettings>(config);

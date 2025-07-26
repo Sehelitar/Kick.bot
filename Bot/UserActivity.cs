@@ -17,6 +17,8 @@
 
 using LiteDB;
 using System;
+using System.IO;
+using Streamer.bot.Plugin.Interface;
 
 namespace Kick.Bot
 {
@@ -42,7 +44,8 @@ namespace Kick.Bot
         {
             try
             {
-                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+                using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                 {
                     var dbCollection = database.GetCollection<UserActivity>("users");
                     dbCollection.Upsert(this);
@@ -59,7 +62,8 @@ namespace Kick.Bot
         {
             try
             {
-                using (var database = new LiteDatabase(@"data\kick-ext.db"))
+                var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
+                using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                 {
                     var dbCollection = database.GetCollection<UserActivity>("users");
                     var activityQuery = from activityObject in dbCollection.Query() where activityObject.UserId == userId select activityObject;
