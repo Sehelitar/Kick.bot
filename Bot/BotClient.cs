@@ -122,24 +122,58 @@ namespace Kick.Bot
             CPH.LogError("[Kick.bot] Running environment testing");
             try
             {
-                CheckAssemblies();
-                return true;
+                CheckSBAssemblies();
             }
             catch(Exception e)
             {
-                CPH.LogError("[Kick.bot] Dependencies assemblies version mismatch");
+                CPH.LogError("[Kick.bot] SB assemblies version mismatch");
                 CPH.LogError(e.Message);
                 var result = MessageBox.Show($"This version of Kick.bot ({Assembly.GetExecutingAssembly().GetName().Version}) is not compatible with the running version of Streamer.bot ({CPH.GetVersion()}). Kick.bot must be updated and won't run in its current state.\r\n\r\nDo you want to check for updates on the project page?", "Kick.bot - Error", MessageBoxButton.YesNo, MessageBoxImage.Error, MessageBoxResult.Yes);
                 if(result == MessageBoxResult.Yes)
                     System.Diagnostics.Process.Start("https://github.com/Sehelitar/Kick.bot/releases/latest");
                 return false;
             }
+            
+            try
+            {
+                CheckExternalAssemblies();
+            }
+            catch(Exception e)
+            {
+                CPH.LogError("[Kick.bot] External dependencies assemblies version mismatch");
+                CPH.LogError(e.Message);
+                var file = "Unknown";
+                if (e.GetType() == typeof(FileNotFoundException))
+                {
+                    file = (e as FileNotFoundException)?.FileName;
+                    if (file != null && file.Contains(","))
+                        file = file.Split(',').FirstOrDefault();
+                    if (file == null)
+                        file = "Unknown";
+                    else
+                        file += ".dll";
+                }
+                MessageBox.Show($"Kick.bot cannot run because at least one dependency is missing. Please check that all .dll files from the archive are present in the dlls folder of your Streamer.bot installation directory, and try again.\r\nIf the problem persists, please open an issue on Github.\r\n\r\nMissing dependency : {file}", "Kick.bot - Error", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+                return false;
+            }
+            
+            return true;
         }
 
-        internal static void CheckAssemblies()
+        private static void CheckSBAssemblies()
         {
             _ = typeof(WebView2).Assembly.FullName;
             _ = typeof(LiteDatabase).Assembly.FullName;
+        }
+        
+        private static void CheckExternalAssemblies()
+        {
+            _ = typeof(Imazen.WebP.SimpleDecoder).Assembly.FullName;
+            _ = typeof(PusherClient.Pusher).Assembly.FullName;
+            _ = typeof(System.Resources.Extensions.DeserializingResourceReader).Assembly.FullName;
+            _ = typeof(WebSocket4Net.WebSocket).Assembly.FullName;
+            _ = typeof(SuperSocket.ClientEngine.ClientSession).Assembly.FullName;
+            _ = typeof(NaCl.Curve25519).Assembly.FullName;
         }
 
         public static bool OpenConfig()
