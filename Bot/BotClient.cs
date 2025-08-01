@@ -1626,26 +1626,27 @@ namespace Kick.Bot
                     interval = Convert.ToInt32(intervalValue);
                 }
 
+                UserActivity pickedUser = null;
                 var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
                 using (var database = new LiteDatabase(Path.Combine(basePath, @"data\kick-ext.db")))
                 {
-                    var now = DateTime.Now;
                     var dbCollection = database.GetCollection<UserActivity>("users");
+                    var notBefore = DateTime.Now.Subtract(TimeSpan.FromSeconds(interval));
                     var activityQuery = from activityObject in dbCollection.Query()
                                         where activityObject.LastActivity.HasValue &&
-                                            (now - activityObject.LastActivity).Value.TotalSeconds <= interval
+                                            activityObject.LastActivity.Value >= notBefore
                                         select activityObject;
 
                     if (activityQuery.Count() > 0)
                     {
                         var pickId = new Random().Next(0, activityQuery.Count());
-                        var pickedUser = activityQuery.Offset(pickId).FirstOrDefault();
-
-                        if (pickedUser != null)
-                        {
-                            GetKickChannelInfos(args, channel, pickedUser.Username);
-                        }
+                        pickedUser = activityQuery.Offset(pickId).FirstOrDefault();
                     }
+                }
+                
+                if (pickedUser != null)
+                {
+                    GetKickChannelInfos(args, channel, pickedUser.Username);
                 }
                 
                 return true;
