@@ -19,7 +19,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Timers;
+using System.Threading;
 using Streamer.bot.Plugin.Interface;
 
 namespace Kick.Bot
@@ -98,38 +98,66 @@ namespace Kick.Bot
         {
             BotClient.CPH?.LogVerbose("[Kick] Loading chat commands");
             var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
-            var fs = new FileStream(Path.Combine(basePath, "data/commands.json"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            var config = new StreamReader(fs).ReadToEnd();
-            fs.Close();
-            _commands = JsonConvert.DeserializeObject<StreamerBotCommands>(config);
-
-            Timer timer = new Timer(1000);
-            timer.Elapsed += delegate
+            for (;;)
             {
-                timer.Stop();
-                BotChatCommander.ReloadCommands();
-                timer.Close();
-            };
-            timer.Start();
+                try
+                {
+                    string config;
+                    using (var fs = new FileStream(Path.Combine(basePath, "data/commands.json"), FileMode.Open, FileAccess.Read,
+                               FileShare.ReadWrite | FileShare.Delete))
+                    {
+                        config = new StreamReader(fs).ReadToEnd();
+                    }
+                    _commands = JsonConvert.DeserializeObject<StreamerBotCommands>(config);
+                    BotChatCommander.ReloadCommands();
+                    return;
+                }
+                catch (IOException e) // Retry
+                {
+                    BotClient.CPH?.LogError($"[Kick] Failed to fetch chat commands configuration. Retrying in 1s.");
+                    BotClient.CPH?.LogError(e.ToString());
+                    Thread.Sleep(1000);
+                }
+                catch (Exception e) // Don't retry
+                {
+                    BotClient.CPH?.LogError($"[Kick] Failed to fetch timed actions configuration.");
+                    BotClient.CPH?.LogError(e.ToString());
+                    return;
+                }
+            }
         }
 
         private static void LoadSettings()
         {
             BotClient.CPH?.LogVerbose("[Kick] Loading main cofiguration");
             var basePath = Path.GetDirectoryName(typeof(CPHInlineBase).Assembly.Location) ?? "./";
-            var fs = new FileStream(Path.Combine(basePath, "data/settings.json"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            var config = new StreamReader(fs).ReadToEnd();
-            fs.Close();
-            _settings = JsonConvert.DeserializeObject<StreamerBotSettings>(config);
-
-            Timer timer = new Timer(1000);
-            timer.Elapsed += delegate
+            for (;;)
             {
-                timer.Stop();
-                BotTimedActionManager.ReloadTimedActions();
-                timer.Close();
-            };
-            timer.Start();
+                try
+                {
+                    string config;
+                    using (var fs = new FileStream(Path.Combine(basePath, "data/settings.json"), FileMode.Open,
+                               FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    {
+                        config = new StreamReader(fs).ReadToEnd();
+                    }
+                    _settings = JsonConvert.DeserializeObject<StreamerBotSettings>(config);
+                    BotTimedActionManager.ReloadTimedActions();
+                    return;
+                }
+                catch (IOException e) // Retry
+                {
+                    BotClient.CPH?.LogError($"[Kick] Failed to fetch timed actions configuration. Retrying in 1s.");
+                    BotClient.CPH?.LogError(e.ToString());
+                    Thread.Sleep(1000);
+                }
+                catch (Exception e) // Don't retry
+                {
+                    BotClient.CPH?.LogError($"[Kick] Failed to fetch timed actions configuration.");
+                    BotClient.CPH?.LogError(e.ToString());
+                    return;
+                }
+            }
         }
 
         public static void Load()
