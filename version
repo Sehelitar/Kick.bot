@@ -1,0 +1,16 @@
+{
+    "lastUpdate": "2025-08-09T00:00:00Z",
+    "versions": [
+        {
+            "version": "1.0.0",
+            "rev": "1.0.1.7",
+            "file": "https://github.com/Sehelitar/Kick.bot/releases/tag/v1.0.1"
+        },
+        {
+            "version": "0.2.8",
+            "rev": "1.0.1.7",
+            "file": "https://github.com/Sehelitar/Kick.bot/releases/tag/v1.0.1"
+        }
+    ],
+    "v": 1
+}

@@ -156,6 +156,14 @@ namespace Kick.Bot
                 MessageBox.Show($"Kick.bot cannot run because at least one dependency is missing. Please check that all .dll files from the archive are present in the dlls folder of your Streamer.bot installation directory, and try again.\r\nIf the problem persists, please open an issue on Github.\r\n\r\nMissing dependency : {file}", "Kick.bot - Error", MessageBoxButtons.OK, MessageBoxIcon.Error, MessageBoxDefaultButton.Button1);
                 return false;
             }
+
+            var updateAvailable = CheckUpdates();
+            if (updateAvailable != null)
+            {
+                var currentRev = Assembly.GetExecutingAssembly().GetName().Version;
+                MessageBox.Show($"A new update for Kick.bot ({updateAvailable.Revision}) is available!\r\nDownload and install it from project's page : https://github.com/Sehelitar/Kick.bot", "Kick.bot - Update available", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+                System.Diagnostics.Process.Start(updateAvailable.File);
+            }
             
             return true;
         }
@@ -174,6 +182,37 @@ namespace Kick.Bot
             _ = typeof(WebSocket4Net.WebSocket).Assembly.FullName;
             _ = typeof(SuperSocket.ClientEngine.ClientSession).Assembly.FullName;
             _ = typeof(NaCl.Curve25519).Assembly.FullName;
+        }
+
+        private static UpdateRelease CheckUpdates()
+        {
+            var currentRev = Assembly.GetExecutingAssembly().GetName().Version;
+            var currentVersion = Version.Parse(CPH.GetVersion());
+            
+            try
+            {
+                using (var client = new WebClient())
+                {
+                    CPH.LogDebug($"[Kick.bot] Checking for updates... (SB:{currentVersion}, KB:{currentRev})");
+                    var releasesJson = client.DownloadString("https://raw.githubusercontent.com/Sehelitar/Kick.bot/main/version");
+                    var releases = JsonConvert.DeserializeObject<UpdateMeta>(releasesJson);
+
+                    var matchingRelease = releases.Releases.FirstOrDefault(x => x.Version >= currentVersion);
+                    if (matchingRelease != null && matchingRelease.Revision > currentRev)
+                    {
+                        CPH.LogDebug($"[Kick.bot] Update available! (SB:{matchingRelease.Version}, KB:{matchingRelease.Revision})");
+                        return matchingRelease;
+                    }
+
+                    CPH.LogDebug($"[Kick.bot] No update available.");
+                }
+            } catch (Exception e)
+            {
+                CPH.LogError("[Kick.bot] Unable to check for updates");
+                CPH.LogError(e.Message);
+            }
+            
+            return null;
         }
 
         public static bool OpenConfig()
