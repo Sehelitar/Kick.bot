@@ -161,7 +161,7 @@ namespace Kick.Bot
             if (updateAvailable != null)
             {
                 var currentRev = Assembly.GetExecutingAssembly().GetName().Version;
-                MessageBox.Show($"A new update for Kick.bot ({updateAvailable.Revision}) is available!\r\nDownload and install it from project's page : https://github.com/Sehelitar/Kick.bot", "Kick.bot - Update available", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
+                MessageBox.Show($"A new update for Kick.bot ({updateAvailable.Revision}) is available!\r\nDownload and install it from the project page: https://github.com/Sehelitar/Kick.bot", "Kick.bot - Update available", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
                 System.Diagnostics.Process.Start(updateAvailable.File);
             }
             
@@ -197,7 +197,7 @@ namespace Kick.Bot
                     var releasesJson = client.DownloadString("https://raw.githubusercontent.com/Sehelitar/Kick.bot/main/version");
                     var releases = JsonConvert.DeserializeObject<UpdateMeta>(releasesJson);
 
-                    var matchingRelease = releases.Releases.FirstOrDefault(x => x.Version >= currentVersion);
+                    var matchingRelease = releases.Releases.FirstOrDefault(x => currentVersion >= x.Version);
                     if (matchingRelease != null && matchingRelease.Revision > currentRev)
                     {
                         CPH.LogDebug($"[Kick.bot] Update available! (SB:{matchingRelease.Version}, KB:{matchingRelease.Revision})");
