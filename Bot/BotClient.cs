@@ -161,7 +161,10 @@ namespace Kick.Bot
             if (updateAvailable != null)
             {
                 MessageBox.Show($"A new update for Kick.bot ({updateAvailable.Revision}) is available!\r\nDownload and install it from the project page: https://github.com/Sehelitar/Kick.bot", "Kick.bot - Update available", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
-                System.Diagnostics.Process.Start(updateAvailable.File);
+                if (Uri.TryCreate(updateAvailable.File, UriKind.Absolute, out var updateUrl) && updateUrl.Scheme == Uri.UriSchemeHttps)
+                    System.Diagnostics.Process.Start(updateUrl.ToString());
+                else
+                    System.Diagnostics.Process.Start("https://github.com/Sehelitar/Kick.bot/releases/latest");
             }
             
             return true;
