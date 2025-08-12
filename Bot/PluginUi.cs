@@ -73,6 +73,19 @@ namespace Kick.Bot
             browserClient.OnAuthenticated += (o, eventArgs) => RefreshUi().Wait();
             browserBot.OnAuthenticated += (o, eventArgs) => RefreshUi().Wait();
             
+            browserClient.OnReady += (o, eventArgs) =>
+            {
+                var matches = ConfigWindow.Controls.Find("broadcasterLoginBtn", true);
+                if (matches.Any())
+                    matches.First().Enabled = true;
+            };
+            browserBot.OnReady += (o, eventArgs) =>
+            {
+                var matches = ConfigWindow.Controls.Find("botLoginBtn", true);
+                if (matches.Any())
+                    matches.First().Enabled = true;
+            };
+            
             ConfigWindow = new PluginConfig();
             ConfigWindow.OnLoginRequested += async (isBot) =>
             {
@@ -145,7 +158,7 @@ namespace Kick.Bot
             var broadcasterName = "<Disconnected>";
             var broadcasterStatus = "-";
             var broadcasterPictureBitmap = Resources.KickLogo;
-            if (BroadcasterKClient.IsAuthenticated)
+            if (BroadcasterKClient.IsReady && BroadcasterKClient.IsAuthenticated)
             {
                 var currentUserInfos = await BroadcasterKClient.GetCurrentUserInfos();
                 broadcasterName = currentUserInfos.Username;
@@ -177,7 +190,7 @@ namespace Kick.Bot
             var botName = "<Disconnected>";
             var botStatus = "-";
             var botPictureBitmap = Resources.KickLogo;
-            if (BotKClient.IsAuthenticated)
+            if (BotKClient.IsReady && BotKClient.IsAuthenticated)
             {
                 var currentUserInfos = await BotKClient.GetCurrentUserInfos();
                 botName = currentUserInfos.Username;
@@ -211,12 +224,18 @@ namespace Kick.Bot
             {
                 var matches = ConfigWindow.Controls.Find("broadcasterLoginBtn", true);
                 if (matches.Any())
+                {
+                    matches.First().Enabled = BroadcasterKClient.IsReady;
                     matches.First().Text = BroadcasterKClient.IsAuthenticated ? "Logout" : "Login";
-        
+                }
+
                 matches = ConfigWindow.Controls.Find("botLoginBtn", true);
                 if (matches.Any())
+                {
+                    matches.First().Enabled = BotKClient.IsReady;
                     matches.First().Text = BotKClient.IsAuthenticated ? "Logout" : "Login";
-        
+                }
+
                 matches = ConfigWindow.Controls.Find("broadcasterName", true);
                 if (matches.Any())
                     matches.First().Text = broadcasterName;
