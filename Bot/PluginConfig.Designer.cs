@@ -106,6 +106,7 @@ namespace Kick.Bot
             this.broadcasterLoginBtn.Text = "Login";
             this.broadcasterLoginBtn.UseVisualStyleBackColor = true;
             this.broadcasterLoginBtn.Click += new System.EventHandler(this.broadcasterLoginBtn_Click);
+            this.broadcasterLoginBtn.Enabled = false;
             // 
             // broadcasterStatus
             // 
@@ -159,6 +160,7 @@ namespace Kick.Bot
             this.botLoginBtn.Text = "Login";
             this.botLoginBtn.UseVisualStyleBackColor = true;
             this.botLoginBtn.Click += new System.EventHandler(this.botLoginBtn_Click);
+            this.botLoginBtn.Enabled = false;
             // 
             // botStatus
             // 

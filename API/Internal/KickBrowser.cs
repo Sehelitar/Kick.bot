@@ -45,6 +45,7 @@ namespace Kick.API.Internal
         public event EventHandler<EventArgs> OnAuthenticated;
         
         public bool IsAuthenticated { get; private set; }
+        public bool IsReady { get; private set; } = false;
 
         private bool _isWaitingForAuthentication = false;
 
@@ -114,6 +115,7 @@ namespace Kick.API.Internal
 #if DEBUG
                     WebController.CoreWebView2.OpenDevToolsWindow();
 #endif
+                    IsReady = true;
                     OnReady?.Invoke(this, EventArgs.Empty);
                     EndAuthentication();
                 };
@@ -137,11 +139,11 @@ namespace Kick.API.Internal
             // Hide unsupported UI elements (close button, account creation, SSO login methods...)
             ExecuteScriptAsync(@"(function() {
                 let expressions = [
-                    ""/html/body/div[3]/div[1]/div/button"", // Close Button
-                    ""/html/body/div[3]/div[2]"", // Account Creation
-                    ""/html/body/div[3]/div[3]/div/div[1]"", // -OR-
-                    ""/html/body/div[3]/div[3]/div/div[2]"", // Ext Auth
-                    ""/html/body/div[3]/div[3]/div/form/div[2]/div/div[2]"" // Password Reset
+                    ""/html/body/div[4]/div[1]/div/button"", // Close Button
+                    ""/html/body/div[4]/div[2]"", // Account Creation
+                    ""/html/body/div[4]/div[3]/div/div[1]"", // -OR-
+                    ""/html/body/div[4]/div[3]/div/div[2]"", // Ext Auth
+                    ""/html/body/div[4]/div[3]/div/form/div[2]/div/div[2]"" // Password Reset
                 ];
                 let xpath = new XPathEvaluator();
                 expressions.forEach(expr => {

@@ -160,9 +160,11 @@ namespace Kick.Bot
             var updateAvailable = CheckUpdates();
             if (updateAvailable != null)
             {
-                var currentRev = Assembly.GetExecutingAssembly().GetName().Version;
                 MessageBox.Show($"A new update for Kick.bot ({updateAvailable.Revision}) is available!\r\nDownload and install it from the project page: https://github.com/Sehelitar/Kick.bot", "Kick.bot - Update available", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
-                System.Diagnostics.Process.Start(updateAvailable.File);
+                if (Uri.TryCreate(updateAvailable.File, UriKind.Absolute, out var updateUrl) && updateUrl.Scheme == Uri.UriSchemeHttps)
+                    System.Diagnostics.Process.Start(updateUrl.ToString());
+                else
+                    System.Diagnostics.Process.Start("https://github.com/Sehelitar/Kick.bot/releases/latest");
             }
             
             return true;
@@ -242,15 +244,40 @@ namespace Kick.Bot
                 AuthenticatedUser = await Client.GetCurrentUserInfos();
                 CPH.LogDebug($"[Kick] Connected as {AuthenticatedUser.Username}");
                 CPH.SetGlobalVar("KickNotFirstLaunch", true);
+                
+                try
+                {
+                    BroadcasterListener = await StartListeningToSelf();
+                    GlobalPluginUi.RefreshEventListenerStatus();
+                    CPH.LogDebug($"[Kick] Listener active.");
+                }
+                catch (Exception ex)
+                {
+                    CPH.LogError($"[Kick] An error occurred while starting listener :");
+                    CPH.LogError($"{ex}");
+                    return;
+                }
+
+                try
+                {
+                    ReloadRewards();
+                }
+                catch (Exception ex)
+                {
+                    CPH.LogError($"[Kick] Error while loading rewards :");
+                    CPH.LogError($"{ex}");
+                }
 
                 var logoPath = Path.Combine(Path.GetTempPath(), "kick_pp.png");
                 try
                 {
                     Bitmap logo;
                     var decoder = new Imazen.WebP.SimpleDecoder();
-                    using (var stream = WebRequest
-                               .CreateHttp(AuthenticatedUser.ProfilePicAlt)
-                               .GetResponse().GetResponseStream())
+                    var request = WebRequest
+                        .CreateHttp(AuthenticatedUser.ProfilePicAlt);
+                    request.Timeout = 5000;
+                    request.ReadWriteTimeout = 5000;
+                    using (var stream = request.GetResponse().GetResponseStream())
                     using (var memoryStream = new MemoryStream())
                     {
                         if (stream != null)
@@ -271,28 +298,22 @@ namespace Kick.Bot
                     CPH.LogDebug($"[Kick] An error occured when trying to fetch user's profile image :");
                     CPH.LogError($"{ex}");
                 }
-                
-                CPH.ShowToastNotification(
-                    "kick.bot.config",
-                    "Kick.bot", 
-                    $"Connected as {AuthenticatedUser.Username}",
-                    "Click to open Kick.bot config window",
-                    logoPath
-                );
 
                 try
                 {
-                    BroadcasterListener = await StartListeningToSelf();
-                    GlobalPluginUi.RefreshEventListenerStatus();
-                    CPH.LogDebug($"[Kick] Listener active.");
+                    CPH.ShowToastNotification(
+                        "kick.bot.config",
+                        "Kick.bot",
+                        $"Connected as {AuthenticatedUser.Username}",
+                        "Click to open Kick.bot config window",
+                        logoPath
+                    );
                 }
                 catch (Exception ex)
                 {
-                    CPH.LogError($"[Kick] An error occurred while starting listener : {ex}");
-                    return;
+                    CPH.LogDebug($"[Kick] Toast notification failed :");
+                    CPH.LogError($"{ex}");
                 }
-
-                ReloadRewards();
             });
         }
         
@@ -331,14 +352,22 @@ namespace Kick.Bot
                     CPH.LogDebug($"[Kick] An error occured when trying to fetch user's profile image :");
                     CPH.LogError($"{ex}");
                 }
-                
-                CPH.ShowToastNotification(
-                    "kick.bot.config",
-                    "Kick.bot",
-                    $"Bot also connected as {AuthenticatedBot.Username}",
-                    "Click to open Kick.bot config window",
-                    logoPath
-                );
+
+                try
+                {
+                    CPH.ShowToastNotification(
+                        "kick.bot.config",
+                        "Kick.bot",
+                        $"Bot also connected as {AuthenticatedBot.Username}",
+                        "Click to open Kick.bot config window",
+                        logoPath
+                    );
+                }
+                catch (Exception ex)
+                {
+                    CPH.LogDebug($"[Kick] Toast notification failed :");
+                    CPH.LogError($"{ex}");
+                }
             });
         }
 

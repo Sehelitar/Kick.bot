@@ -31,6 +31,7 @@ namespace Kick.API
         private KickEventListener EventListener { get; set; }
 
         public bool IsAuthenticated => Browser?.IsAuthenticated ?? false;
+        public bool IsReady => Browser?.IsReady ?? false;
 
         internal KickBrowser Browser { get; }
 
