@@ -111,6 +111,7 @@ namespace Kick.Bot
                     if (BroadcasterKClient.IsAuthenticated)
                     {
                         await BroadcasterKClient.Browser.BeginLogout();
+                        BotClient.CPH.UnsetGlobalVar("KickNotFirstLaunch", true);
                         Invoke(() =>
                         {
                             BroadcasterKClient = new KickClient(BroadcasterKClient.Browser); // Reset Client

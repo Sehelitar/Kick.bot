@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using Kick.Bot;
 
 /// ========================================================== ///
@@ -22,7 +19,7 @@ public class CPHInline
     public void Init()
     {
 	    BotClient.CPH = CPH;
-	    if (!BotClient.CheckCompatibility())
+	    if (!BotClient.CheckCompatibility(1))
 		    return;
     	Client = new BotClient();
     }

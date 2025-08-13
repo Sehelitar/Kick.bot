@@ -43,6 +43,8 @@ namespace Kick.Bot
         // ReSharper disable once InconsistentNaming
         public static IInlineInvokeProxy CPH;
         
+        public const uint ActionRevision = 1;
+        
         internal static PluginUi GlobalPluginUi;
 
         private static KickClient Client => GlobalPluginUi.BroadcasterKClient;
@@ -109,17 +111,43 @@ namespace Kick.Bot
             AltClient.Browser.OnAuthenticated += BotAuthenticated;
             
             CommandCounter.PruneVolatile();
+            CPH.SetGlobalVar("kickInstanceId", AppDomain.CurrentDomain.FriendlyName, false);
             CPH.LogDebug("[Kick.bot] Init completed.");
         }
 
         ~BotClient()
         {
+            CPH.UnsetGlobalVar("kickInstanceId", false);
             CPH.LogDebug("[Kick.bot] Extension is shuting down");
         }
 
-        public static bool CheckCompatibility()
+        public static bool CheckCompatibility(uint rev = 0)
         {
-            CPH.LogError("[Kick.bot] Running environment testing");
+            CPH.LogDebug("[Kick.bot] Running environment testing");
+            
+            if(rev < ActionRevision)
+            {
+                CPH.LogDebug($"[Kick] KickBot action from Streamer.bot is too old (rev:{rev}), {ActionRevision} minimum required.");
+                MessageBox.Show($"Please click on \"Import\" and import actions.txt from Kick.bot archive into Streamer.bot to update Kick.bot C# code.", "Kick.bot - Action update required", MessageBoxButton.OK, MessageBoxImage.Warning, MessageBoxResult.OK);
+                return false;
+            }
+            
+            var kickInstanceId = CPH.GetGlobalVar<string>("kickInstanceId", false);
+            if (kickInstanceId != null && kickInstanceId != AppDomain.CurrentDomain.FriendlyName)
+            {
+                CPH.LogDebug($"[Kick] New instance started {kickInstanceId} but instance {AppDomain.CurrentDomain.FriendlyName} already exists. Restart required.");
+                var result = MessageBox.Show($"To complete Kick.bot update, you need to close Streamer.bot, update DLLs from the package (if not done yet) and restart the bot. Kick.bot will not work properly until you complete the update process.\r\n\r\nClose Streamer.bot now?", "Kick.bot - Restart needed", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.Yes);
+                if (result == MessageBoxResult.Yes)
+                {
+                    CPH.LogDebug($"[Kick] Closing Streamer.bot...");
+                    Environment.Exit(0);
+                    return false;
+                }
+                
+                CPH.LogDebug($"[Kick] Restart denied. Instance starting sequence halted.");
+                return false;
+            }
+
             try
             {
                 CheckSBAssemblies();
