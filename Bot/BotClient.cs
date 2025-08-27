@@ -35,6 +35,7 @@ using System.Windows;
 using Kick.Properties;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
+using Sentry;
 
 namespace Kick.Bot
 {
@@ -113,6 +114,10 @@ namespace Kick.Bot
             CommandCounter.PruneVolatile();
             CPH.SetGlobalVar("kickInstanceId", AppDomain.CurrentDomain.FriendlyName, false);
             CPH.LogDebug("[Kick.bot] Init completed.");
+            
+#if DEBUG
+            SentrySdk.CaptureMessage($@"Kick.bot {Assembly.GetExecutingAssembly().GetName().Version} extension started in debug mode.");
+#endif
         }
 
         ~BotClient()
@@ -202,6 +207,7 @@ namespace Kick.Bot
         {
             _ = typeof(WebView2).Assembly.FullName;
             _ = typeof(LiteDatabase).Assembly.FullName;
+            _ = typeof(SentrySdk).Assembly.FullName;
         }
         
         private static void CheckExternalAssemblies()
@@ -418,6 +424,21 @@ namespace Kick.Bot
             return new BotEventListener(Client.GetEventListener(), channel);
         }
 
+        private static bool LogError(Exception e)
+        {
+            try
+            {
+                CPH.LogError($"[Kick.bot] An exception occured :");
+                CPH.LogError($"[Kick.bot] {e}");
+                SentrySdk.CaptureException(e);
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            return false;
+        }
+        
         public bool ReloadRewards(Channel channel = null)
         {
             try
@@ -435,8 +456,7 @@ namespace Kick.Bot
             }
             catch(Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while reloading rewards : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -478,8 +498,7 @@ namespace Kick.Bot
             }
             catch(Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while sending a message to chatroom : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -508,8 +527,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while deleting a message from chatroom : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -578,8 +596,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while sending a reply : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -598,8 +615,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while clearing chat : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -622,8 +638,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while fetching user infos : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -637,8 +652,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while fetching broadcaster infos : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -769,8 +783,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while fetching channel infos : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -794,8 +807,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while adding a new VIP : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -817,8 +829,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while removing a VIP : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -840,8 +851,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while adding a new OG : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -863,8 +873,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while removing an OG : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -887,8 +896,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while adding a moderator : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -911,8 +919,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while removing a moderator : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -940,8 +947,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while banning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -971,8 +977,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while temporarily banning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -995,8 +1000,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while unbanning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -1030,8 +1034,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while starting a new poll : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -1064,8 +1067,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while changing stream title : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -1129,7 +1131,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to create to clip : {ex}");
+                LogError(ex);
             }
 
             return false;
@@ -1189,7 +1191,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
+                LogError(ex);
             }
 
             return false;
@@ -1217,7 +1219,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch clip URL : {ex}");
+                LogError(ex);
             }
 
             return false;
@@ -1263,7 +1265,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
+                LogError(ex);
             }
             return false;
         }
@@ -1306,7 +1308,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
+                LogError(ex);
             }
             return false;
         }
@@ -1346,7 +1348,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat protection : {ex}");
+                LogError(ex);
             }
             return false;
         }
@@ -1385,7 +1387,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
+                LogError(ex);
             }
             return false;
         }
@@ -1425,7 +1427,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
+                LogError(ex);
             }
             return false;
         }
@@ -1464,7 +1466,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
+                LogError(ex);
             }
             return false;
         }
@@ -1494,8 +1496,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to change chat mode : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -1515,8 +1516,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to unpin a message : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -1578,7 +1578,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch pinned message : {ex}");
+                LogError(ex);
             }
             return false;
         }
@@ -1701,8 +1701,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch follower infos : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -1748,8 +1747,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch a random active user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -1774,8 +1772,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch channel counters : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1805,8 +1802,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while unbanning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1841,8 +1837,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while unbanning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1877,10 +1872,8 @@ namespace Kick.Bot
                 reward.IsPaused = args.TryGetValue("rewardPaused", out hold) && (bool)Convert.ToBoolean(hold);
                 reward.IsUserInputRequired = args.TryGetValue("rewardUserInputRequired", out hold) && (bool)Convert.ToBoolean(hold);
 
-                if (reward.IsUserInputRequired)
+                if (reward.IsUserInputRequired && args.TryGetValue("rewardPrompt", out hold))
                 {
-                    if (!args.TryGetValue("rewardPrompt", out hold))
-                        throw new Exception("missing argument, rewardPrompt required");
                     reward.Prompt = hold.ToString();
                 }
                 else
@@ -1901,8 +1894,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch channel counters : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1956,8 +1948,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to fetch channel counters : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1979,8 +1970,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while unbanning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2020,8 +2010,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] APIError : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2043,8 +2032,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] APIError : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2066,8 +2054,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] APIError : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -2116,8 +2103,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to create a prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2154,8 +2140,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to create a prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2201,8 +2186,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to create a prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2224,8 +2208,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to cancel the prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2247,8 +2230,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to lock the prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2272,8 +2254,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to resolve the prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -2294,8 +2275,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to enable multistreaming : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2314,8 +2294,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick.bot] An error occurred while trying to disable multistreaming : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion

@@ -15,15 +15,16 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using System;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Kick.API;
 using Kick.API.Internal;
 using Kick.Properties;
+using Sentry;
 
 namespace Kick.Bot
 {
@@ -34,6 +35,8 @@ namespace Kick.Bot
         internal KickClient BroadcasterKClient { get; private set; }
         internal KickClient BotKClient { get; private set; }
 
+        private const string SentryDsn = null;
+
         internal PluginUi()
         {
             var awaitLock = new ManualResetEvent(false);
@@ -42,12 +45,43 @@ namespace Kick.Bot
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 
+                Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+                
                 InitUi();
+#if DEBUG
+                var sentryOptions = new SentryOptions
+                {
+                    // Tells which project in Sentry to send events to:
+                    Dsn = SentryDsn,
+                    // When configuring for the first time, to see what the SDK is doing:
+                    Debug = true,
+                    // Adds request URL and headers, IP and name for users, etc.
+                    SendDefaultPii = true,
+                    // This option is recommended. It enables Sentry's "Release Health" feature.
+                    AutoSessionTracking = true,
+                    // Enable Global Mode since this is a client app
+                    IsGlobalModeEnabled = true,
+                    Release = "kb-dbg@" + Assembly.GetExecutingAssembly().GetName().Version
+                };
+#else
+                var sentryOptions = new SentryOptions
+                {
+                    Dsn = SentryDsn,
+                    Debug = false,
+                    SendDefaultPii = false,
+                    AutoSessionTracking = true,
+                    IsGlobalModeEnabled = true,
+                    Release = "kb@" + Assembly.GetExecutingAssembly().GetName().Version
+                };
+#endif
                 
                 awaitLock.Set();
                 try
                 {
-                    Application.Run();
+                    using (SentrySdk.Init(sentryOptions))
+                    {
+                        Application.Run();
+                    }
                 }
                 catch (ThreadAbortException)
                 {

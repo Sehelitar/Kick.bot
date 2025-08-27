@@ -613,7 +613,7 @@ namespace Kick.API
                 { "should_redemptions_skip_request_queue", reward.ShouldRedemptionsSkipRequestQueue },
                 { "title", reward.Title },
             };
-            if(reward.IsUserInputRequired)
+            if(reward.IsUserInputRequired && !string.IsNullOrEmpty(reward.Prompt))
                 data.Add("prompt", reward.Prompt);
             var response = await ApiJsonPatch<KickApiMessageOperationResponse<Reward>>($"/api/v2/channels/{channel.Slug}/rewards/{reward.Id}", data);
             if (response.Message != "OK")
