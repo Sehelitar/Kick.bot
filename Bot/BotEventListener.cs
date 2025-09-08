@@ -568,7 +568,7 @@ namespace Kick.Bot
         {
             try
             {
-                if (chatUpdateEvent.Id != Channel.Id)
+                if (chatUpdateEvent.Id != Channel.Chatroom.Id)
                     return;
 
                 CPH.LogDebug($"[Kick.bot] Chat mode changed");
@@ -605,6 +605,14 @@ namespace Kick.Bot
 
                 var propertyName = "unknown";
                 var propertyValue = false;
+                var specializedEvent = new BotEvent()
+                {
+                    ActionId = BotEventType.ChatModeChanged,
+                    Arguments = new Dictionary<string, object>() {
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                };
                 switch (chatModeChangedEvent.ChatMode)
                 {
                     case ChatMode.FollowersOnlyEnabled:
@@ -612,6 +620,8 @@ namespace Kick.Bot
                         goto case ChatMode.FollowersOnlyDisabled;
                     case ChatMode.FollowersOnlyDisabled :
                         propertyName = "followersOnly";
+                        specializedEvent.ActionId = propertyValue ? BotEventType.FollowerModeOn : BotEventType.FollowerModeOff;
+                        specializedEvent.Arguments.Add("followerMode", propertyValue);
                         break;
                     case ChatMode.AllowLinksActivated:
                         propertyValue = true;
@@ -624,18 +634,24 @@ namespace Kick.Bot
                         goto case ChatMode.EmotesOnlyDisabled;
                     case ChatMode.EmotesOnlyDisabled:
                         propertyName = "emotesOnly";
+                        specializedEvent.ActionId = propertyValue ? BotEventType.EmoteModeOn : BotEventType.EmoteModeOff;
+                        specializedEvent.Arguments.Add("emoteMode", propertyValue);
                         break;
                     case ChatMode.SlowModeEnabled:
                         propertyValue = true;
                         goto case ChatMode.SlowModeDisabled;
                     case ChatMode.SlowModeDisabled:
                         propertyName = "slowMode";
+                        specializedEvent.ActionId = propertyValue ? BotEventType.SlowModeOn : BotEventType.SlowModeOff;
+                        specializedEvent.Arguments.Add("slowMode", propertyValue);
                         break;
                     case ChatMode.SubsOnlyEnabled:
                         propertyValue = true;
                         goto case ChatMode.SubsOnlyDisabled;
                     case ChatMode.SubsOnlyDisabled:
                         propertyName = "subsOnly";
+                        specializedEvent.ActionId = propertyValue ? BotEventType.SubModeOn : BotEventType.SubModeOff;
+                        specializedEvent.Arguments.Add("subscriberOnly", propertyValue);
                         break;
                     default: break;
                 }
@@ -651,6 +667,29 @@ namespace Kick.Bot
                         { "fromKick", true }
                     }
                 });
+                SendToQueue(specializedEvent);
+                switch (specializedEvent.ActionId)
+                {
+                    case BotEventType.FollowerModeOn:
+                    case BotEventType.FollowerModeOff:
+                        specializedEvent.ActionId = BotEventType.FollowerModeChanged;
+                        break;
+                    case BotEventType.EmoteModeOn:
+                    case BotEventType.EmoteModeOff:
+                        specializedEvent.ActionId = BotEventType.EmoteModeChanged;
+                        break;
+                    case BotEventType.SlowModeOn:
+                    case BotEventType.SlowModeOff:
+                        specializedEvent.ActionId = BotEventType.SlowModeChanged;
+                        break;
+                    case BotEventType.SubModeOn:
+                    case BotEventType.SubModeOff:
+                        specializedEvent.ActionId = BotEventType.SubModeChanged;
+                        break;
+                    default:
+                        return;
+                }
+                SendToQueue(specializedEvent);
             }
             catch (Exception ex)
             {
@@ -1185,6 +1224,18 @@ namespace Kick.Bot
             public const string ChatCommandCooldown = "kickChatCommandCooldown";
             public const string ChatUpdated = "kickChatUpdated";
             public const string ChatModeChanged = "kickChatModeChanged";
+            public const string EmoteModeOn = "kickEmoteModeOn";
+            public const string EmoteModeOff = "kickEmoteModeOff";
+            public const string EmoteModeChanged = "kickEmoteModeChanged";
+            public const string FollowerModeOn = "kickFollowerModeOn";
+            public const string FollowerModeOff = "kickFollowerModeOff";
+            public const string FollowerModeChanged = "kickFollowerModeChanged";
+            public const string SlowModeOn = "kickSlowModeOn";
+            public const string SlowModeOff = "kickSlowModeOff";
+            public const string SlowModeChanged = "kickSlowModeChanged";
+            public const string SubModeOn = "kickSubModeOn";
+            public const string SubModeOff = "kickSubModeOff";
+            public const string SubModeChanged = "kickSubModeChanged";
             public const string MessageDeleted = "kickChatMessageDeleted";
             public const string MessagePinned = "kickMessagePinned";
             public const string MessageUnpinned = "kickMessageUnpinned";

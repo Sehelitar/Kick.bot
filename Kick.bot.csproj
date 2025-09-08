@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net4.8.1</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
-    <Version>1.0.2.2</Version>
+    <Version>1.0.2.3</Version>
     <Authors>Sehelitar</Authors>
     <Description>Kick Streaming integration for Streamer.bot</Description>
     <Copyright>Sehelitar ©2023-2025</Copyright>
@@ -46,6 +46,7 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3296.44" />
     <PackageReference Include="PusherClient" Version="2.2.1" />
     <PackageReference Include="System.Resources.Extensions" Version="4.6.0" />
+    <PackageReference Include="Sentry" Version="5.10.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,9 +55,6 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="Streamer.bot.Plugin.Interface">
       <HintPath>..\Streamer.bot-1.0.0\Streamer.bot.Plugin.Interface.dll</HintPath>
-    </Reference>
-    <Reference Include="Sentry">
-      <HintPath>..\Streamer.bot-1.0.0\Sentry.dll</HintPath>
     </Reference>
   </ItemGroup>
 

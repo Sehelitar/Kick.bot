@@ -61,12 +61,26 @@ namespace Kick.Bot
 
             CPH.RegisterCustomTrigger("[Kick.bot] Chat Message", BotEventListener.BotEventType.Message, new[] { "Kick", "Chat" });
             CPH.RegisterCustomTrigger("[Kick.bot] Chat config updated", BotEventListener.BotEventType.ChatUpdated, new[] { "Kick", "Chat" });
-
-            CPH.RegisterCustomTrigger("[Kick.bot] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new[] { "Kick", "Commands" });
-            CPH.RegisterCustomTrigger("[Kick.bot] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands Cooldown" });
-
             CPH.RegisterCustomTrigger("[Kick.bot] Message Pinned", BotEventListener.BotEventType.MessagePinned, new[] { "Kick", "Chat" });
             CPH.RegisterCustomTrigger("[Kick.bot] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new[] { "Kick", "Chat" });
+            /*
+            CPH.RegisterCustomTrigger("[Kick.bot] Chat mode changed", BotEventListener.BotEventType.ChatModeChanged, new[] { "Kick", "Chat" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Emote Mode On", BotEventListener.BotEventType.EmoteModeOn, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Emote Mode Off", BotEventListener.BotEventType.EmoteModeOff, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Emote Mode Changed", BotEventListener.BotEventType.EmoteModeChanged, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Follower Mode On", BotEventListener.BotEventType.FollowerModeOn, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Follower Mode Off", BotEventListener.BotEventType.FollowerModeOff, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Follower Mode Changed", BotEventListener.BotEventType.FollowerModeChanged, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Slow Mode On", BotEventListener.BotEventType.SlowModeOn, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Slow Mode Off", BotEventListener.BotEventType.SlowModeOff, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Slow Mode Changed", BotEventListener.BotEventType.SlowModeChanged, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Sub Mode On", BotEventListener.BotEventType.SubModeOn, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Sub Mode Off", BotEventListener.BotEventType.SubModeOff, new[] { "Kick", "Chat", "Mode" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Sub Mode Changed", BotEventListener.BotEventType.SubModeChanged, new[] { "Kick", "Chat", "Mode" });
+            */
+            
+            CPH.RegisterCustomTrigger("[Kick.bot] Chat Command (Any)", BotEventListener.BotEventType.ChatCommand, new[] { "Kick", "Commands" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands Cooldown" });
 
             CPH.RegisterCustomTrigger("[Kick.bot] Follow", BotEventListener.BotEventType.Follow, new[] { "Kick", "Channel" });
 
