@@ -637,16 +637,18 @@ namespace Kick.Bot
         {
             try
             {
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
+                if (channel == null)
+                    channel = BroadcasterListener?.Channel;
+                if (channel == null)
+                    return false;
                 
-                if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != String.Empty)
+                if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != string.Empty)
                     return GetKickChannelInfos(args, channel, Convert.ToString(userName), true);
-                if (args.TryGetValue("targetUser", out var user) && user != null && user != String.Empty)
+                if (args.TryGetValue("targetUser", out var user) && user != null && user != string.Empty)
                     return GetKickChannelInfos(args, channel, Convert.ToString(user));
-                if (args.TryGetValue("userName", out userName) && userName != null && userName != String.Empty)
+                if (args.TryGetValue("userName", out userName) && userName != null && userName != string.Empty)
                     return GetKickChannelInfos(args, channel, Convert.ToString(userName) , true);
-                if (args.TryGetValue("user", out user) && user != null && user != String.Empty)
+                if (args.TryGetValue("user", out user) && user != null && user != string.Empty)
                     return GetKickChannelInfos(args, channel, Convert.ToString(user));
                 return GetKickChannelInfos(args, channel, channel.Slug, true);
             }
@@ -689,11 +691,15 @@ namespace Kick.Bot
                 if(isSlug)
                 {
                     channelInfos = Client.GetChannelInfos(username).Result;
+                    if (channelInfos == null)
+                        return false;
                     userInfos = Client.GetChannelUserInfos(channel.Slug, channelInfos.User.Username).Result;
                 }
                 else
                 {
                     userInfos = Client.GetChannelUserInfos(channel.Slug, username).Result;
+                    if (userInfos == null)
+                        return false;
                     channelInfos = Client.GetChannelInfos(userInfos.Slug).Result;
                 }
 
@@ -1548,6 +1554,8 @@ namespace Kick.Bot
                 if (result.Status == TaskStatus.RanToCompletion)
                 {
                     var pinnedMessage = result.Result;
+                    if (pinnedMessage == null)
+                        return false;
 
                     var emoteRe = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
                     var messageStripped = emoteRe.Replace(pinnedMessage.Message.Content, "");
@@ -1829,7 +1837,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("rewardId", out var hold))
+                if (!args.TryGetValue("rewardId", out var hold) || !(hold is string) || string.IsNullOrWhiteSpace(hold))
                     throw new Exception("missing argument, rewardId required");
                 
                 Task<Reward> result = Client.GetReward(channel, hold);
@@ -1921,12 +1929,12 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("rewardId", out var hold))
-                    throw new Exception("missing argument, rewardTitle required");
+                if (!args.TryGetValue("rewardId", out var hold) || !(hold is string) || string.IsNullOrWhiteSpace(hold))
+                    throw new Exception("missing argument, rewardId required");
                 
                 var reward = Client.GetReward(channel, hold).Result;
                 
-                if (args.TryGetValue("rewardTitle", out hold))
+                if (args.TryGetValue("rewardTitle", out hold) && hold is string && !string.IsNullOrWhiteSpace(hold))
                     reward.Title = hold.ToString();
                 
                 if (args.TryGetValue("rewardDescription", out hold))
@@ -1975,7 +1983,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("rewardId", out var hold))
+                if (!args.TryGetValue("rewardId", out var hold) || !(hold is string) || string.IsNullOrWhiteSpace(hold))
                     throw new Exception("missing argument, rewardId required");
                 
                 var result = Client.DeleteReward(channel, hold);
@@ -2170,7 +2178,7 @@ namespace Kick.Bot
                 var prediction = new Prediction();
                 dynamic hold, hold2;
                 
-                if (!args.TryGetValue("predictionTitle", out hold))
+                if (!args.TryGetValue("predictionTitle", out hold) || !(hold is string) || string.IsNullOrWhiteSpace(hold))
                     throw new Exception("missing argument, predictionTitle required");
                 prediction.Title = hold.ToString();
                 
@@ -2213,7 +2221,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("predictionId", out var predictionId))
+                if (!args.TryGetValue("predictionId", out var predictionId) || !(predictionId is string) || string.IsNullOrWhiteSpace(predictionId))
                     throw new Exception("missing argument, predictionId required");
                 
                 var result = Client.CancelPrediction(channel, predictionId.ToString());
@@ -2235,7 +2243,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("predictionId", out var predictionId))
+                if (!args.TryGetValue("predictionId", out var predictionId) || !(predictionId is string) || string.IsNullOrWhiteSpace(predictionId))
                     throw new Exception("missing argument, predictionId required");
                 
                 var result = Client.LockPrediction(channel, predictionId.ToString());
@@ -2257,9 +2265,9 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("predictionId", out var predictionId))
+                if (!args.TryGetValue("predictionId", out var predictionId) || !(predictionId is string) || string.IsNullOrWhiteSpace(predictionId))
                     throw new Exception("missing argument, predictionId required");
-                if (!args.TryGetValue("outcomeId", out var outcomeId))
+                if (!args.TryGetValue("outcomeId", out var outcomeId) || !(outcomeId is string) || string.IsNullOrWhiteSpace(outcomeId))
                     throw new Exception("missing argument, outcomeId required");
                 
                 var result = Client.ResolvePrediction(channel, predictionId.ToString(), outcomeId.ToString());
