@@ -83,6 +83,7 @@ namespace Kick.Bot
             CPH.RegisterCustomTrigger("[Kick.bot] Chat Command Cooldown (Any)", BotEventListener.BotEventType.ChatCommandCooldown, new[] { "Kick", "Commands Cooldown" });
 
             CPH.RegisterCustomTrigger("[Kick.bot] Follow", BotEventListener.BotEventType.Follow, new[] { "Kick", "Channel" });
+            CPH.RegisterCustomTrigger("[Kick.bot] Kicks gifted", BotEventListener.BotEventType.KicksGifted, new[] { "Kick", "Channel" });
 
             CPH.RegisterCustomTrigger("[Kick.bot] Subscription", BotEventListener.BotEventType.Subscription, new[] { "Kick", "Subscriptions" });
             CPH.RegisterCustomTrigger("[Kick.bot] Sub Gift (x1)", BotEventListener.BotEventType.SubGift, new[] { "Kick", "Subscriptions" });

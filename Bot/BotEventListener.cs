@@ -62,6 +62,7 @@ namespace Kick.Bot
             _eventListener.OnViewerFollow += Kick_OnViewerFollow;
             _eventListener.OnPredictionCreated += Kick_OnPredictionCreated;
             _eventListener.OnPredictionUpdated += Kick_OnPredictionUpdated;
+            _eventListener.OnKicksGifted += Kick_OnKicksGifted;
 
             _eventListener.JoinAsync(Channel).Wait();
 
@@ -270,6 +271,9 @@ namespace Kick.Bot
                         { "isSubscribed", deletedMessage.Sender.IsSubscriber },
                         { "isModerator", deletedMessage.Sender.IsModerator },
                         { "isVip", deletedMessage.Sender.IsVip },
+                        
+                        { "isAiModerated", message.AiModerated },
+                        { "violatedRules", string.Join(", ", message.ViolatedRules) },
 
                         { "msgId", deletedMessage.Id },
                         { "chatroomId", deletedMessage.ChatroomId },
@@ -1203,6 +1207,36 @@ namespace Kick.Bot
                 CPH.LogError($"[Kick.bot] An error occurred when reading prediction data : {ex.Message}");
             }
         }
+        
+        private void Kick_OnKicksGifted(KicksGiftedEvent gift)
+        {
+            try
+            {
+                var giftData = new Dictionary<string, object>()
+                {
+                    { "amount", gift.Gift.Amount },
+                    { "message", gift.Message },
+                    { "gift", gift.Gift.Name },
+                    { "giftType", gift.Gift.Type },
+                    { "giftTier", gift.Gift.Tier },
+                    { "sender", gift.Sender.Username },
+                    { "senderId", gift.Sender.Id },
+                    { "senderColor", gift.Sender.Color },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+                SendToQueue(new BotEvent
+                {
+                    ActionId = BotEventType.KicksGifted,
+                    Arguments = giftData
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick.bot] An error occurred when reading kicks gift data : {ex.Message}");
+            }
+        }
 
         private void UpdateActivityDB(EventUser user)
         {
@@ -1259,6 +1293,7 @@ namespace Kick.Bot
             public const string PredictionLocked = "kickPredictionLocked";
             public const string PredictionResolved = "kickPredictionResolved";
             public const string PredictionCancelled = "kickPredictionCancelled";
+            public const string KicksGifted = "kickKicksGifted";
         }
 
         internal class BotEvent

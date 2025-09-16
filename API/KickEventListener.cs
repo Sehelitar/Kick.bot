@@ -123,6 +123,9 @@ namespace Kick.API
         public delegate void OnPredictionUpdatedHandler(Prediction prediction);
         public event OnPredictionUpdatedHandler OnPredictionUpdated;
         
+        public delegate void OnKicksGiftedHandler(KicksGiftedEvent kicksGiftedEvent);
+        public event OnKicksGiftedHandler OnKicksGifted;
+        
         private readonly Pusher _pusherClient;
         //private delegate void PusherEventHandler(string eventType, PusherEvent eventData);
         
@@ -155,6 +158,7 @@ namespace Kick.API
         private async Task RegisterChannel(Models.Channel channel)
         {
             var channels = new List<string> {
+                $"channel_{channel.Id}",
                 $"chatrooms.{channel.Chatroom.Id}.v2",
                 $"predictions-channel-{channel.Id}"
             };
@@ -225,6 +229,12 @@ namespace Kick.API
             
             switch (eventType)
             {
+                // channel_<id>
+                case "KicksGifted":
+                    var kicksGifted = JsonConvert.DeserializeObject<KicksGiftedEvent>(eventData.Data);
+                    OnKicksGifted?.Invoke(kicksGifted);
+                    return;
+                
                 // chatrooms.<id>.v2
                 case "App\\Events\\ChatMessageEvent":
                     var chatMessageEvent = JsonConvert.DeserializeObject<ChatMessageEvent>(eventData.Data);

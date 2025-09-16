@@ -25,6 +25,10 @@ namespace Kick.API.Events
         public string Id { get; internal set; }
         [JsonProperty("message")]
         public ChatMessageDeletedInfos Message { get; internal set; }
+        [JsonProperty("aiModerated")]
+        public bool AiModerated { get; internal set; }
+        [JsonProperty("violatedRules")]
+        public string[] ViolatedRules { get; internal set; } = {};
     }
 
     public class ChatMessageDeletedInfos
