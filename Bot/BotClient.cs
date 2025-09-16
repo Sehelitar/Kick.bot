@@ -35,6 +35,8 @@ using System.Windows.Forms;
 using Kick.Properties;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
+using Sentry;
+using User = Kick.API.Models.User;
 
 namespace Kick.Bot
 {
@@ -68,6 +70,7 @@ namespace Kick.Bot
             CPH.RegisterCustomTrigger("[Kick] Message Unpinned", BotEventListener.BotEventType.MessageUnpinned, new[] { "Kick", "Chat" });
 
             CPH.RegisterCustomTrigger("[Kick] Follow", BotEventListener.BotEventType.Follow, new[] { "Kick", "Channel" });
+            CPH.RegisterCustomTrigger("[Kick] Kicks gifted", BotEventListener.BotEventType.KicksGifted, new[] { "Kick", "Channel" });
 
             CPH.RegisterCustomTrigger("[Kick] Subscription", BotEventListener.BotEventType.Subscription, new[] { "Kick", "Subscriptions" });
             CPH.RegisterCustomTrigger("[Kick] Sub Gift (x1)", BotEventListener.BotEventType.SubGift, new[] { "Kick", "Subscriptions" });
@@ -113,6 +116,10 @@ namespace Kick.Bot
             CommandCounter.PruneVolatile();
             CPH.SetGlobalVar("kickInstanceId", AppDomain.CurrentDomain.FriendlyName, false);
             CPH.LogDebug("[Kick] Init completed.");
+            
+#if DEBUG
+            SentrySdk.CaptureMessage($@"Kick.bot {Assembly.GetExecutingAssembly().GetName().Version} extension started in debug mode.");
+#endif
         }
 
         ~BotClient()
@@ -202,6 +209,7 @@ namespace Kick.Bot
         {
             _ = typeof(WebView2).Assembly.FullName;
             _ = typeof(LiteDatabase).Assembly.FullName;
+            _ = typeof(SentrySdk).Assembly.FullName;
         }
         
         private static void CheckExternalAssemblies()
@@ -418,6 +426,21 @@ namespace Kick.Bot
             var channel = await Client.GetChannelInfos(AuthenticatedUser.StreamerChannel.Slug);
             return new BotEventListener(Client.GetEventListener(), channel);
         }
+        
+        private static bool LogError(Exception e)
+        {
+            try
+            {
+                CPH.LogError($"[Kick] An exception occured :");
+                CPH.LogError($"[Kick] {e}");
+                SentrySdk.CaptureException(e);
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+            return false;
+        }
 
         public bool ReloadRewards(Channel channel = null)
         {
@@ -436,8 +459,7 @@ namespace Kick.Bot
             }
             catch(Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while reloading rewards : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -479,8 +501,7 @@ namespace Kick.Bot
             }
             catch(Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while sending a message to chatroom : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -509,8 +530,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while deleting a message from chatroom : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -579,8 +599,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while sending a reply : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -599,8 +618,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while clearing chat : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -608,23 +626,24 @@ namespace Kick.Bot
         {
             try
             {
-                if(channel == null)
-                    channel = BroadcasterListener.Channel;
+                if (channel == null)
+                    channel = BroadcasterListener?.Channel;
+                if (channel == null)
+                    return false;
                 
-                if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != String.Empty)
+                if (args.TryGetValue("targetUserName", out var userName) && userName != null && userName != string.Empty)
                     return GetKickChannelInfos(args, channel, Convert.ToString(userName), true);
-                if (args.TryGetValue("targetUser", out var user) && user != null && user != String.Empty)
+                if (args.TryGetValue("targetUser", out var user) && user != null && user != string.Empty)
                     return GetKickChannelInfos(args, channel, Convert.ToString(user));
-                if (args.TryGetValue("userName", out userName) && userName != null && userName != String.Empty)
+                if (args.TryGetValue("userName", out userName) && userName != null && userName != string.Empty)
                     return GetKickChannelInfos(args, channel, Convert.ToString(userName) , true);
-                if (args.TryGetValue("user", out user) && user != null && user != String.Empty)
+                if (args.TryGetValue("user", out user) && user != null && user != string.Empty)
                     return GetKickChannelInfos(args, channel, Convert.ToString(user));
                 return GetKickChannelInfos(args, channel, channel.Slug, true);
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while fetching user infos : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -638,8 +657,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while fetching broadcaster infos : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -662,11 +680,15 @@ namespace Kick.Bot
                 if(isSlug)
                 {
                     channelInfos = Client.GetChannelInfos(username).Result;
+                    if (channelInfos == null)
+                        return false;
                     userInfos = Client.GetChannelUserInfos(channel.Slug, channelInfos.User.Username).Result;
                 }
                 else
                 {
                     userInfos = Client.GetChannelUserInfos(channel.Slug, username).Result;
+                    if (userInfos == null)
+                        return false;
                     channelInfos = Client.GetChannelInfos(userInfos.Slug).Result;
                 }
 
@@ -770,8 +792,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while fetching channel infos : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -795,8 +816,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while adding a new VIP : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -818,8 +838,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while removing a VIP : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -841,8 +860,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while adding a new OG : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -864,8 +882,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while removing an OG : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -888,8 +905,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while adding a moderator : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -912,8 +928,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while removing a moderator : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -941,8 +956,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while banning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -972,8 +986,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while temporarily banning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -996,8 +1009,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -1031,8 +1043,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while starting a new poll : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -1065,8 +1076,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while changing stream title : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -1130,7 +1140,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to create to clip : {ex}");
+                return LogError(ex);
             }
 
             return false;
@@ -1190,7 +1200,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                return LogError(ex);
             }
 
             return false;
@@ -1218,7 +1228,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch clip URL : {ex}");
+                return LogError(ex);
             }
 
             return false;
@@ -1264,7 +1274,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                return LogError(ex);
             }
             return false;
         }
@@ -1307,7 +1317,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                return LogError(ex);
             }
             return false;
         }
@@ -1347,7 +1357,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat protection : {ex}");
+                return LogError(ex);
             }
             return false;
         }
@@ -1386,7 +1396,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                return LogError(ex);
             }
             return false;
         }
@@ -1426,7 +1436,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                return LogError(ex);
             }
             return false;
         }
@@ -1465,7 +1475,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
+                return LogError(ex);
             }
             return false;
         }
@@ -1495,8 +1505,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to change chat mode : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -1516,8 +1525,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to unpin a message : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -1535,6 +1543,8 @@ namespace Kick.Bot
                 if (result.Status == TaskStatus.RanToCompletion)
                 {
                     var pinnedMessage = result.Result;
+                    if (pinnedMessage == null)
+                        return false;
 
                     var emoteRe = new Regex(@"\[emote:(?<emoteId>\d+):(?<emoteText>\w+)\]");
                     var messageStripped = emoteRe.Replace(pinnedMessage.Message.Content, "");
@@ -1579,7 +1589,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch pinned message : {ex}");
+                return LogError(ex);
             }
             return false;
         }
@@ -1702,8 +1712,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch follower infos : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -1749,8 +1758,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch a random active user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
 
@@ -1775,8 +1783,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1806,8 +1813,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1820,7 +1826,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("rewardId", out var hold))
+                if (!args.TryGetValue("rewardId", out var hold) || !(hold is string) || string.IsNullOrWhiteSpace(hold))
                     throw new Exception("missing argument, rewardId required");
                 
                 Task<Reward> result = Client.GetReward(channel, hold);
@@ -1842,8 +1848,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1902,8 +1907,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1916,12 +1920,12 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("rewardId", out var hold))
-                    throw new Exception("missing argument, rewardTitle required");
+                if (!args.TryGetValue("rewardId", out var hold) || !(hold is string) || string.IsNullOrWhiteSpace(hold))
+                    throw new Exception("missing argument, rewardId required");
                 
                 var reward = Client.GetReward(channel, hold).Result;
                 
-                if (args.TryGetValue("rewardTitle", out hold))
+                if (args.TryGetValue("rewardTitle", out hold) && hold is string && !string.IsNullOrWhiteSpace(hold))
                     reward.Title = hold.ToString();
                 
                 if (args.TryGetValue("rewardDescription", out hold))
@@ -1957,8 +1961,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to fetch channel counters : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -1971,7 +1974,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("rewardId", out var hold))
+                if (!args.TryGetValue("rewardId", out var hold) || !(hold is string) || string.IsNullOrWhiteSpace(hold))
                     throw new Exception("missing argument, rewardId required");
                 
                 var result = Client.DeleteReward(channel, hold);
@@ -1980,8 +1983,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while unbanning a user : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2021,8 +2023,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] APIError : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2044,8 +2045,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] APIError : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2067,8 +2067,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] APIError : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -2117,8 +2116,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2155,8 +2153,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2172,7 +2169,7 @@ namespace Kick.Bot
                 var prediction = new Prediction();
                 dynamic hold, hold2;
                 
-                if (!args.TryGetValue("predictionTitle", out hold))
+                if (!args.TryGetValue("predictionTitle", out hold) || !(hold is string) || string.IsNullOrWhiteSpace(hold))
                     throw new Exception("missing argument, predictionTitle required");
                 prediction.Title = hold.ToString();
                 
@@ -2202,8 +2199,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to create a prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2216,7 +2212,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("predictionId", out var predictionId))
+                if (!args.TryGetValue("predictionId", out var predictionId) || !(predictionId is string) || string.IsNullOrWhiteSpace(predictionId))
                     throw new Exception("missing argument, predictionId required");
                 
                 var result = Client.CancelPrediction(channel, predictionId.ToString());
@@ -2225,8 +2221,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to cancel the prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2239,7 +2234,7 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("predictionId", out var predictionId))
+                if (!args.TryGetValue("predictionId", out var predictionId) || !(predictionId is string) || string.IsNullOrWhiteSpace(predictionId))
                     throw new Exception("missing argument, predictionId required");
                 
                 var result = Client.LockPrediction(channel, predictionId.ToString());
@@ -2248,8 +2243,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to lock the prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2262,19 +2256,18 @@ namespace Kick.Bot
                 if(channel == null)
                     channel = BroadcasterListener.Channel;
 
-                if (!args.TryGetValue("predictionId", out var predictionId))
+                if (!args.TryGetValue("predictionId", out var predictionId) || !(predictionId is string) || string.IsNullOrWhiteSpace(predictionId))
                     throw new Exception("missing argument, predictionId required");
-                if (!args.TryGetValue("outcomeId", out var outcomeId))
+                if (!args.TryGetValue("outcomeId", out var outcomeId) || !(outcomeId is string) || string.IsNullOrWhiteSpace(outcomeId))
                     throw new Exception("missing argument, outcomeId required");
-                
+
                 var result = Client.ResolvePrediction(channel, predictionId.ToString(), outcomeId.ToString());
                 result.Wait();
                 return result.Status == TaskStatus.RanToCompletion;
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to resolve the prediction : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion
@@ -2295,8 +2288,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to enable multistreaming : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         
@@ -2315,8 +2307,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogDebug($"[Kick] An error occurred while trying to disable multistreaming : {ex}");
-                return false;
+                return LogError(ex);
             }
         }
         #endregion

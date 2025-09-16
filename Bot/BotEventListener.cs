@@ -62,6 +62,7 @@ namespace Kick.Bot
             _eventListener.OnViewerFollow += Kick_OnViewerFollow;
             _eventListener.OnPredictionCreated += Kick_OnPredictionCreated;
             _eventListener.OnPredictionUpdated += Kick_OnPredictionUpdated;
+            _eventListener.OnKicksGifted += Kick_OnKicksGifted;
 
             _eventListener.JoinAsync(Channel).Wait();
 
@@ -270,6 +271,9 @@ namespace Kick.Bot
                         { "isSubscribed", deletedMessage.Sender.IsSubscriber },
                         { "isModerator", deletedMessage.Sender.IsModerator },
                         { "isVip", deletedMessage.Sender.IsVip },
+                        
+                        { "isAiModerated", message.AiModerated },
+                        { "violatedRules", string.Join(", ", message.ViolatedRules) },
 
                         { "msgId", deletedMessage.Id },
                         { "chatroomId", deletedMessage.ChatroomId },
@@ -568,10 +572,10 @@ namespace Kick.Bot
         {
             try
             {
-                if (chatUpdateEvent.Id != Channel.Id)
+                if (chatUpdateEvent.Id != Channel.Chatroom.Id)
                     return;
 
-                CPH.LogDebug($"[Kick] Chat mode changed");
+                CPH.LogDebug($"[Kick.bot] Chat mode changed");
 
                 SendToQueue(new BotEvent()
                 {
@@ -592,7 +596,7 @@ namespace Kick.Bot
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred while handling chat mode change : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred while handling chat mode change : {ex.Message}");
             }
         }
         
@@ -605,6 +609,14 @@ namespace Kick.Bot
 
                 var propertyName = "unknown";
                 var propertyValue = false;
+                var specializedEvent = new BotEvent()
+                {
+                    ActionId = BotEventType.ChatModeChanged,
+                    Arguments = new Dictionary<string, object>() {
+                        { "eventSource", "kick" },
+                        { "fromKick", true }
+                    }
+                };
                 switch (chatModeChangedEvent.ChatMode)
                 {
                     case ChatMode.FollowersOnlyEnabled:
@@ -612,6 +624,8 @@ namespace Kick.Bot
                         goto case ChatMode.FollowersOnlyDisabled;
                     case ChatMode.FollowersOnlyDisabled :
                         propertyName = "followersOnly";
+                        specializedEvent.ActionId = propertyValue ? BotEventType.FollowerModeOn : BotEventType.FollowerModeOff;
+                        specializedEvent.Arguments.Add("followerMode", propertyValue);
                         break;
                     case ChatMode.AllowLinksActivated:
                         propertyValue = true;
@@ -624,18 +638,24 @@ namespace Kick.Bot
                         goto case ChatMode.EmotesOnlyDisabled;
                     case ChatMode.EmotesOnlyDisabled:
                         propertyName = "emotesOnly";
+                        specializedEvent.ActionId = propertyValue ? BotEventType.EmoteModeOn : BotEventType.EmoteModeOff;
+                        specializedEvent.Arguments.Add("emoteMode", propertyValue);
                         break;
                     case ChatMode.SlowModeEnabled:
                         propertyValue = true;
                         goto case ChatMode.SlowModeDisabled;
                     case ChatMode.SlowModeDisabled:
                         propertyName = "slowMode";
+                        specializedEvent.ActionId = propertyValue ? BotEventType.SlowModeOn : BotEventType.SlowModeOff;
+                        specializedEvent.Arguments.Add("slowMode", propertyValue);
                         break;
                     case ChatMode.SubsOnlyEnabled:
                         propertyValue = true;
                         goto case ChatMode.SubsOnlyDisabled;
                     case ChatMode.SubsOnlyDisabled:
                         propertyName = "subsOnly";
+                        specializedEvent.ActionId = propertyValue ? BotEventType.SubModeOn : BotEventType.SubModeOff;
+                        specializedEvent.Arguments.Add("subscriberOnly", propertyValue);
                         break;
                     default: break;
                 }
@@ -651,10 +671,33 @@ namespace Kick.Bot
                         { "fromKick", true }
                     }
                 });
+                SendToQueue(specializedEvent);
+                switch (specializedEvent.ActionId)
+                {
+                    case BotEventType.FollowerModeOn:
+                    case BotEventType.FollowerModeOff:
+                        specializedEvent.ActionId = BotEventType.FollowerModeChanged;
+                        break;
+                    case BotEventType.EmoteModeOn:
+                    case BotEventType.EmoteModeOff:
+                        specializedEvent.ActionId = BotEventType.EmoteModeChanged;
+                        break;
+                    case BotEventType.SlowModeOn:
+                    case BotEventType.SlowModeOff:
+                        specializedEvent.ActionId = BotEventType.SlowModeChanged;
+                        break;
+                    case BotEventType.SubModeOn:
+                    case BotEventType.SubModeOff:
+                        specializedEvent.ActionId = BotEventType.SubModeChanged;
+                        break;
+                    default:
+                        return;
+                }
+                SendToQueue(specializedEvent);
             }
             catch (Exception ex)
             {
-                CPH.LogError($"[Kick] An error occurred while handling chat mode change : {ex.Message}");
+                CPH.LogError($"[Kick.bot] An error occurred while handling chat mode change : {ex.Message}");
             }
         }
 
@@ -1164,6 +1207,36 @@ namespace Kick.Bot
                 CPH.LogError($"[Kick] An error occurred when reading prediction data : {ex.Message}");
             }
         }
+        
+        private void Kick_OnKicksGifted(KicksGiftedEvent gift)
+        {
+            try
+            {
+                var giftData = new Dictionary<string, object>()
+                {
+                    { "amount", gift.Gift.Amount },
+                    { "message", gift.Message },
+                    { "gift", gift.Gift.Name },
+                    { "giftType", gift.Gift.Type },
+                    { "giftTier", gift.Gift.Tier },
+                    { "sender", gift.Sender.Username },
+                    { "senderId", gift.Sender.Id },
+                    { "senderColor", gift.Sender.Color },
+
+                    { "eventSource", "kick" },
+                    { "fromKick", true }
+                };
+                SendToQueue(new BotEvent
+                {
+                    ActionId = BotEventType.KicksGifted,
+                    Arguments = giftData
+                });
+            }
+            catch (Exception ex)
+            {
+                CPH.LogError($"[Kick.bot] An error occurred when reading kicks gift data : {ex.Message}");
+            }
+        }
 
         private void UpdateActivityDB(EventUser user)
         {
@@ -1185,6 +1258,18 @@ namespace Kick.Bot
             public const string ChatCommandCooldown = "kickChatCommandCooldown";
             public const string ChatUpdated = "kickChatUpdated";
             public const string ChatModeChanged = "kickChatModeChanged";
+            public const string EmoteModeOn = "kickEmoteModeOn";
+            public const string EmoteModeOff = "kickEmoteModeOff";
+            public const string EmoteModeChanged = "kickEmoteModeChanged";
+            public const string FollowerModeOn = "kickFollowerModeOn";
+            public const string FollowerModeOff = "kickFollowerModeOff";
+            public const string FollowerModeChanged = "kickFollowerModeChanged";
+            public const string SlowModeOn = "kickSlowModeOn";
+            public const string SlowModeOff = "kickSlowModeOff";
+            public const string SlowModeChanged = "kickSlowModeChanged";
+            public const string SubModeOn = "kickSubModeOn";
+            public const string SubModeOff = "kickSubModeOff";
+            public const string SubModeChanged = "kickSubModeChanged";
             public const string MessageDeleted = "kickChatMessageDeleted";
             public const string MessagePinned = "kickMessagePinned";
             public const string MessageUnpinned = "kickMessageUnpinned";
@@ -1208,6 +1293,7 @@ namespace Kick.Bot
             public const string PredictionLocked = "kickPredictionLocked";
             public const string PredictionResolved = "kickPredictionResolved";
             public const string PredictionCancelled = "kickPredictionCancelled";
+            public const string KicksGifted = "kickKicksGifted";
         }
 
         internal class BotEvent

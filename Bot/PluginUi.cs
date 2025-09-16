@@ -18,12 +18,14 @@
 using System;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Kick.API;
 using Kick.API.Internal;
 using Kick.Properties;
+using Sentry;
 
 namespace Kick.Bot
 {
@@ -34,6 +36,8 @@ namespace Kick.Bot
         internal KickClient BroadcasterKClient { get; private set; }
         internal KickClient BotKClient { get; private set; }
 
+        private const string SentryDsn = null;
+
         internal PluginUi()
         {
             var awaitLock = new ManualResetEvent(false);
@@ -42,12 +46,43 @@ namespace Kick.Bot
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
                 
+                Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+                
                 InitUi();
+#if DEBUG
+                var sentryOptions = new SentryOptions
+                {
+                    // Tells which project in Sentry to send events to:
+                    Dsn = SentryDsn,
+                    // When configuring for the first time, to see what the SDK is doing:
+                    Debug = true,
+                    // Adds request URL and headers, IP and name for users, etc.
+                    SendDefaultPii = true,
+                    // This option is recommended. It enables Sentry's "Release Health" feature.
+                    AutoSessionTracking = true,
+                    // Enable Global Mode since this is a client app
+                    IsGlobalModeEnabled = true,
+                    Release = "kb-dbg@" + Assembly.GetExecutingAssembly().GetName().Version
+                };
+#else
+                var sentryOptions = new SentryOptions
+                {
+                    Dsn = SentryDsn,
+                    Debug = false,
+                    SendDefaultPii = false,
+                    AutoSessionTracking = true,
+                    IsGlobalModeEnabled = true,
+                    Release = "kb@" + Assembly.GetExecutingAssembly().GetName().Version
+                };
+#endif
                 
                 awaitLock.Set();
                 try
                 {
-                    Application.Run();
+                    using (SentrySdk.Init(sentryOptions))
+                    {
+                        Application.Run();
+                    }
                 }
                 catch (ThreadAbortException)
                 {
@@ -72,7 +107,7 @@ namespace Kick.Bot
             
             browserClient.OnAuthenticated += (o, eventArgs) => RefreshUi().Wait();
             browserBot.OnAuthenticated += (o, eventArgs) => RefreshUi().Wait();
-
+            
             browserClient.OnReady += (o, eventArgs) =>
             {
                 var matches = ConfigWindow.Controls.Find("broadcasterLoginBtn", true);
@@ -133,10 +168,17 @@ namespace Kick.Bot
 
         private void Invoke(MethodInvoker method)
         {
-            if(ConfigWindow.InvokeRequired)
-                ConfigWindow.Invoke(method);
+            if (ConfigWindow.InvokeRequired)
+            {
+                if (ConfigWindow.IsHandleCreated)
+                {
+                    ConfigWindow.Invoke(method);
+                }
+            }
             else
+            {
                 method();
+            }
         }
 
         public void OpenConfig()
@@ -161,31 +203,49 @@ namespace Kick.Bot
             var broadcasterPictureBitmap = Resources.KickLogo;
             if (BroadcasterKClient.IsReady && BroadcasterKClient.IsAuthenticated)
             {
-                var currentUserInfos = await BroadcasterKClient.GetCurrentUserInfos();
-                broadcasterName = currentUserInfos.Username;
-                var channelInfos = await BroadcasterKClient.GetChannelInfos(currentUserInfos.StreamerChannel.Slug);
-                broadcasterStatus = channelInfos.IsAffiliate
-                    ? "Affiliate"
-                    : (channelInfos.IsVerified ? "Verified" : "User");
-                var broadcasterPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
-
-                if (broadcasterPicture != null)
+                try
                 {
-                    var decoder = new Imazen.WebP.SimpleDecoder();
-                    using (var stream = System.Net.WebRequest
-                               .CreateHttp(broadcasterPicture)
-                               .GetResponse().GetResponseStream())
-                    using (var memoryStream = new System.IO.MemoryStream())
+                    var currentUserInfos = await BroadcasterKClient.GetCurrentUserInfos();
+                    broadcasterName = currentUserInfos.Username;
+                    var channelInfos = await BroadcasterKClient.GetChannelInfos(currentUserInfos.StreamerChannel.Slug);
+                    broadcasterStatus = channelInfos.IsAffiliate
+                        ? "Affiliate"
+                        : (channelInfos.IsVerified ? "Verified" : "User");
+                    var broadcasterPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
+
+                    if (broadcasterPicture != null)
                     {
-                        if (stream != null) {
-                            await stream.CopyToAsync(memoryStream);
-                            var pictureBuffer = memoryStream.ToArray();
-                            broadcasterPictureBitmap = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                        try
+                        {
+                            var decoder = new Imazen.WebP.SimpleDecoder();
+                            using (var stream = System.Net.WebRequest
+                                       .CreateHttp(broadcasterPicture)
+                                       .GetResponse().GetResponseStream())
+                            using (var memoryStream = new System.IO.MemoryStream())
+                            {
+                                if (stream != null)
+                                {
+                                    await stream.CopyToAsync(memoryStream);
+                                    var pictureBuffer = memoryStream.ToArray();
+                                    broadcasterPictureBitmap =
+                                        decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            BotClient.CPH.LogError($"[Kick.bot] Unable to fetch broadcaster profile picture :");
+                            BotClient.CPH.LogError($"[Kick.bot] {e}");
                         }
                     }
-                }
 
-                BotClient.CPH.LogDebug($"[Kick] Broadcaster status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
+                    BotClient.CPH.LogDebug(
+                        $"[Kick.bot] Broadcaster status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
 
             var botName = "<Disconnected>";
@@ -193,34 +253,51 @@ namespace Kick.Bot
             var botPictureBitmap = Resources.KickLogo;
             if (BotKClient.IsReady && BotKClient.IsAuthenticated)
             {
-                var currentUserInfos = await BotKClient.GetCurrentUserInfos();
-                botName = currentUserInfos.Username;
-                var channelInfos = await BotKClient.GetChannelInfos(currentUserInfos.StreamerChannel.Slug);
-                botStatus = channelInfos.IsAffiliate
-                    ? "Affiliate"
-                    : (channelInfos.IsVerified ? "Verified" : "User");
-                var botPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
-                
-                if (botPicture != null)
+                try
                 {
-                    var decoder = new Imazen.WebP.SimpleDecoder();
-                    using (var stream = System.Net.WebRequest
-                               .CreateHttp(botPicture)
-                               .GetResponse().GetResponseStream())
-                    using (var memoryStream = new System.IO.MemoryStream())
+                    var currentUserInfos = await BotKClient.GetCurrentUserInfos();
+                    botName = currentUserInfos.Username;
+                    var channelInfos = await BotKClient.GetChannelInfos(currentUserInfos.StreamerChannel.Slug);
+                    botStatus = channelInfos.IsAffiliate
+                        ? "Affiliate"
+                        : (channelInfos.IsVerified ? "Verified" : "User");
+                    var botPicture = currentUserInfos.ProfilePic ?? currentUserInfos.ProfilePicAlt;
+
+                    if (botPicture != null)
                     {
-                        if (stream != null) {
-                            await stream.CopyToAsync(memoryStream);
-                            var pictureBuffer = memoryStream.ToArray();
-                            botPictureBitmap = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                        try
+                        {
+                            var decoder = new Imazen.WebP.SimpleDecoder();
+                            using (var stream = System.Net.WebRequest
+                                       .CreateHttp(botPicture)
+                                       .GetResponse().GetResponseStream())
+                            using (var memoryStream = new System.IO.MemoryStream())
+                            {
+                                if (stream != null)
+                                {
+                                    await stream.CopyToAsync(memoryStream);
+                                    var pictureBuffer = memoryStream.ToArray();
+                                    botPictureBitmap = decoder.DecodeFromBytes(pictureBuffer, pictureBuffer.Length);
+                                }
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            BotClient.CPH.LogError($"[Kick.bot] Unable to fetch bot profile picture :");
+                            BotClient.CPH.LogError($"[Kick.bot] {e}");
                         }
                     }
+
+                    BotClient.CPH.LogDebug(
+                        $"[Kick.bot] Bot status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
                 }
-                
-                BotClient.CPH.LogDebug($"[Kick] Bot status : {currentUserInfos.Username} (A:{channelInfos.IsAffiliate} / V:{channelInfos.IsVerified})");
+                catch (Exception)
+                {
+                    // ignored
+                }
             }
 
-            BotClient.CPH.LogDebug($"[Kick] Syncing UI");
+            BotClient.CPH.LogDebug($"[Kick.bot] Syncing UI");
             Invoke(() =>
             {
                 var matches = ConfigWindow.Controls.Find("broadcasterLoginBtn", true);

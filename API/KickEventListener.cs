@@ -123,6 +123,9 @@ namespace Kick.API
         public delegate void OnPredictionUpdatedHandler(Prediction prediction);
         public event OnPredictionUpdatedHandler OnPredictionUpdated;
         
+        public delegate void OnKicksGiftedHandler(KicksGiftedEvent kicksGiftedEvent);
+        public event OnKicksGiftedHandler OnKicksGifted;
+        
         private readonly Pusher _pusherClient;
         //private delegate void PusherEventHandler(string eventType, PusherEvent eventData);
         
@@ -155,6 +158,7 @@ namespace Kick.API
         private async Task RegisterChannel(Models.Channel channel)
         {
             var channels = new List<string> {
+                $"channel_{channel.Id}",
                 $"chatrooms.{channel.Chatroom.Id}.v2",
                 $"predictions-channel-{channel.Id}"
             };
@@ -225,6 +229,12 @@ namespace Kick.API
             
             switch (eventType)
             {
+                // channel_<id>
+                case "KicksGifted":
+                    var kicksGifted = JsonConvert.DeserializeObject<KicksGiftedEvent>(eventData.Data);
+                    OnKicksGifted?.Invoke(kicksGifted);
+                    return;
+                
                 // chatrooms.<id>.v2
                 case "App\\Events\\ChatMessageEvent":
                     var chatMessageEvent = JsonConvert.DeserializeObject<ChatMessageEvent>(eventData.Data);
@@ -449,49 +459,50 @@ namespace Kick.API
             if(!_currentPolls.ContainsKey(channel.Id))
             {
                 _currentPolls[channel.Id] = pollUpdateEvent;
+                
+                // Poll Created
+                OnPollCreated?.Invoke(pollUpdateEvent);
+                
                 var pollUpdater = new Thread(() =>
                 {
-                    // Poll Created
-                    OnPollCreated?.Invoke(pollUpdateEvent);
-
                     // Wait for poll to end
                     var waitHandle = new AutoResetEvent(false);
-                    var remaining = pollUpdateEvent.Poll.Remaining;
-                    var timer = new Timer(state => {
-                        if(!_currentPolls.TryGetValue(channel.Id, out var currentPoll))
+                    if (pollUpdateEvent?.Poll != null)
+                    {
+                        var timer = new Timer(state =>
                         {
-                            // Not supposed to happen, thread will be stopped
-                            currentPoll = pollUpdateEvent; // Restore context
-                            pollUpdateEvent.State = PollState.Cancelled;
-                        } else
-                        {
-                            pollUpdateEvent = currentPoll; // Save context
-                        }
+                            if (!_currentPolls.TryGetValue(channel.Id, out var currentPoll))
+                            {
+                                // Not supposed to happen, thread will be stopped
+                                currentPoll = pollUpdateEvent; // Restore context
+                                currentPoll.State = PollState.Cancelled;
+                            }
 
-                        if(pollUpdateEvent.State == PollState.Cancelled)
-                        {
-                            OnPollCancelled?.Invoke(pollUpdateEvent);
-                            waitHandle.Set();
-                            return;
-                        }
+                            if (currentPoll.State == PollState.Cancelled)
+                            {
+                                OnPollCancelled?.Invoke(currentPoll);
+                                waitHandle.Set();
+                                return;
+                            }
 
-                        currentPoll.Poll.Remaining = --remaining;
-                        if (currentPoll.Poll.Remaining >= 0)
-                        {
-                            OnPollUpdated?.Invoke(currentPoll);
-                        }
-                        else
-                        {
-                            currentPoll.Poll.Remaining = 0;
-                            currentPoll.State = PollState.Completed;
-                            OnPollCompleted?.Invoke(currentPoll);
-                            waitHandle.Set();
-                        }
-                    }, null, 1000, 1000);
-                    waitHandle.WaitOne();
+                            --currentPoll.Poll.Remaining;
+                            if (currentPoll.Poll.Remaining >= 0)
+                            {
+                                OnPollUpdated?.Invoke(currentPoll);
+                            }
+                            else
+                            {
+                                currentPoll.Poll.Remaining = 0;
+                                currentPoll.State = PollState.Completed;
+                                OnPollCompleted?.Invoke(currentPoll);
+                                waitHandle.Set();
+                            }
+                        }, null, 1000, 1000);
+                        waitHandle.WaitOne();
 
-                    // Stop Timer
-                    timer.Dispose();
+                        // Stop Timer
+                        timer.Dispose();
+                    }
 
                     // Poll completed
                     _currentPolls.Remove(channel.Id);
@@ -501,7 +512,8 @@ namespace Kick.API
             else {
                 if (pollUpdateEvent != null)
                 {
-                    _currentPolls[channel.Id].Poll = pollUpdateEvent.Poll;
+                    if (pollUpdateEvent.Poll != null)
+                        _currentPolls[channel.Id].Poll.Options = pollUpdateEvent.Poll.Options;
                 }
                 else
                 {
