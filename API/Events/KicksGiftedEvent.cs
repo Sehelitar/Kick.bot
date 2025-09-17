@@ -52,8 +52,8 @@ namespace Kick.API.Events
         [JsonProperty("tier")]
         public string Tier { get; internal set; }
         [JsonProperty("character_limit")]
-        public int CharacterLimit { get; internal set; }
+        public long CharacterLimit { get; internal set; }
         [JsonProperty("pinned_time")]
-        public int PinnedTime { get; internal set; }
+        public long PinnedTime { get; internal set; }
     }
 }
