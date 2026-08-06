@@ -32,6 +32,9 @@ namespace Kick.API
         /// <returns>A channel object or null if the channel doesn't exist.</returns>
         public async Task<Channel> GetChannelInfos(string channelName)
         {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
             return await ApiGet<Channel>("/api/v1/channels/" + channelName);
         }
 
@@ -41,6 +44,9 @@ namespace Kick.API
         /// <returns>A ChatroomUser object or null if the channel doesn't exist.</returns>
         public async Task<ChannelUser> GetChannelUserInfos(string channelName, string username)
         {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
             return await ApiGet<ChannelUser>("/api/v2/channels/" + channelName + "/users/" + username);
         }
 
@@ -48,6 +54,9 @@ namespace Kick.API
         /// <returns>A User object representing the authenticated user, or null if still unauthenticated.</returns>
         public async Task<User> GetCurrentUserInfos()
         {
+            if (!IsAuthenticated)
+                throw new UnauthenticatedException();
+            
             return await ApiGet<User>("/api/v1/user");
         }
 
