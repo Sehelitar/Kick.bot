@@ -29,7 +29,7 @@ namespace Kick.API
 {
     public sealed class KickEventListener
     {
-        private const string KickAppId = "32cbd69e4b950bf97679";
+        private const string KickAppId = "34bf7a0ff419a2a775b9";
         private const string KickCluster = "us2";
 
         // [CHAT] Nouveau Message
